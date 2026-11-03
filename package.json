@@ -1,0 +1,62 @@
+{
+  "name": "money-saver",
+  "private": true,
+  "version": "0.2.2",
+  "type": "module",
+  "engines": {
+    "node": "25.x"
+  },
+  "scripts": {
+    "runtime": "node scripts/runtime.mjs",
+    "preinstall": "node scripts/runtime.mjs --check",
+    "predev": "node scripts/runtime.mjs --check",
+    "prebuild": "node scripts/runtime.mjs --check",
+    "pretypecheck": "node scripts/runtime.mjs --check",
+    "prelint": "node scripts/runtime.mjs --check",
+    "pretest": "node scripts/runtime.mjs --check",
+    "prepreview": "node scripts/runtime.mjs --check",
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dexie": "^4.2.0",
+    "dexie-react-hooks": "^4.2.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.66.0",
+    "recharts": "^3.3.0",
+    "tailwind-merge": "^3.3.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10",
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "fake-indexeddb": "^6.2.4",
+    "globals": "^16.5.0",
+    "tailwindcss": "^4.1.17",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^7.2.0",
+    "vitest": "^5.1.0"
+  }
+}

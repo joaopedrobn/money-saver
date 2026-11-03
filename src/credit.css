@@ -1,0 +1,332 @@
+.credit-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 13px;
+  margin: 20px 0;
+}
+.credit-metrics .metric-value {
+  font-size: 25px;
+  margin-bottom: 2px;
+}
+.credit-metrics .metric-top {
+  font-size: 10px;
+  line-height: 1.7;
+}
+.credit-section {
+  margin-top: 23px;
+}
+.credit-checkbox {
+  margin: 22px;
+}
+.credit-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 18px 0;
+}
+.section-heading .credit-toolbar {
+  margin: 0;
+}
+.credit-card-title {
+  font-size: 25px !important;
+  margin-top: 16px !important;
+  letter-spacing: -0.5px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+}
+.credit-card {
+  padding: 24px;
+}
+.credit-card h2 {
+  font-size: 21px;
+  letter-spacing: -0.5px;
+  margin-top: 22px;
+  font-weight: 500;
+}
+.credit-card > p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.credit-card .detail-list {
+  font-size: 11px;
+}
+.credit-card .detail-list dt {
+  min-width: 0;
+}
+.credit-card .detail-list dd {
+  white-space: nowrap;
+}
+.credit-empty {
+  padding: 30px 24px;
+  line-height: 1.9;
+  color: #94a68a;
+  font-size: 12px;
+}
+.credit-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 12px 0;
+  margin: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+.credit-tabs .button {
+  flex-shrink: 0;
+  min-height: 35px;
+  padding: 0 12px;
+  font-size: 10px;
+}
+.credit-tabs .button:last-child {
+  margin-left: auto;
+}
+.credit-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.credit-row-actions .button {
+  white-space: normal;
+  line-height: 1.5;
+}
+.credit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 19px;
+  width: 100%;
+  min-width: 0;
+}
+.credit-fields:disabled {
+  opacity: 0.7;
+}
+.installment-preview {
+  border: 1px solid #3b4934;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #151c13;
+}
+.installment-preview h3 {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 18px;
+}
+.installment-preview .table-scroll {
+  max-height: 250px;
+}
+.installment-preview .movement-table {
+  min-width: 440px;
+  font-size: 10px;
+}
+.installment-preview .movement-table td,
+.installment-preview .movement-table th {
+  padding: 12px;
+}
+.installment-preview .warning-banner {
+  margin: 10px 15px;
+  font-size: 10px;
+}
+.launch-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 11px;
+  color: #c8d2c1;
+  margin-top: 23px;
+}
+.launch-mode select,
+.credit-report-controls select {
+  padding: 11px 12px;
+  border: 1px solid #405136;
+  border-radius: 7px;
+  background: #111710;
+  color: #d6e5cc;
+  outline: none;
+  font: inherit;
+  font-size: 12px;
+}
+.launch-mode select:focus,
+.credit-report-controls select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px #b7d99f20;
+}
+.invoice-status-line {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 18px 0;
+  font-size: 11px;
+}
+.invoice-status-line > .phase-badge {
+  font-size: 10px;
+  padding: 5px 9px;
+}
+.installment-group {
+  padding: 25px 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
+.installment-group h3 {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 24px 15px;
+}
+.installment-group .movement-table {
+  min-width: 580px;
+}
+.dashboard-credit .credit-metrics {
+  padding: 0 22px;
+  margin-top: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.dashboard-credit .metric {
+  background: #151c14;
+  border-color: #303c2a;
+}
+.dashboard-credit .metric-value {
+  font-size: 23px;
+}
+.credit-report-controls {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 2px 23px 23px;
+}
+.credit-report-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 10px;
+  color: #b8c7ac;
+  min-width: 280px;
+}
+.credit-report-controls p {
+  font-size: 10px;
+  color: #8d9e81;
+  line-height: 1.9;
+}
+.credit-next-dates {
+  border-top: 1px solid var(--border);
+  padding: 16px 23px;
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  font-size: 10px;
+}
+.credit-next-dates > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.credit-next-dates span {
+  color: #a0ae95;
+}
+.credit-next-dates strong {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.dashboard-credit > .error-banner {
+  margin: 0 23px 20px;
+}
+.record-id {
+  word-break: break-all;
+}
+@media (max-width: 1100px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  .credit-report-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  .credit-report-controls label {
+    min-width: 0;
+  }
+  .credit-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .credit-tabs .button:last-child {
+    margin-left: 0;
+  }
+  .credit-metrics .metric-value {
+    font-size: 24px;
+  }
+}
+@media (max-width: 700px) {
+  .credit-metrics {
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .credit-metrics .metric-value {
+    font-size: 22px;
+    overflow-wrap: anywhere;
+  }
+  .credit-metrics .metric-top {
+    font-size: 9px;
+  }
+  .card-grid {
+    gap: 16px;
+  }
+  .credit-card {
+    padding: 23px 20px;
+  }
+  .dashboard-credit .credit-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 16px;
+  }
+  .dashboard-credit .metric-value {
+    font-size: 21px;
+  }
+  .credit-report-controls {
+    padding: 0 18px 20px;
+  }
+  .credit-report-controls select {
+    width: 100%;
+    font-size: 11px;
+    white-space: normal;
+  }
+  .credit-next-dates {
+    padding: 17px 18px;
+    flex-direction: column;
+    gap: 13px;
+  }
+  .credit-next-dates > div {
+    justify-content: space-between;
+  }
+  .dashboard-credit .panel-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .invoice-status-line {
+    gap: 8px;
+  }
+  .credit-toolbar .button {
+    font-size: 10px;
+  }
+  .section-heading .credit-toolbar {
+    width: 100%;
+    margin-top: 8px;
+  }
+  .installment-preview .movement-table {
+    min-width: 420px;
+  }
+  .launch-mode {
+    font-size: 10px;
+  }
+  .launch-mode select {
+    font-size: 11px;
+  }
+  .credit-card .detail-list dd {
+    white-space: normal;
+  }
+  .credit-tabs {
+    margin-top: 15px;
+  }
+}
