@@ -23,7 +23,12 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "build:cloudflare": "npm run typecheck && node scripts/build-cloudflare.mjs",
+    "check:remote-sql": "node scripts/prepare-remote-sql.mjs --check",
+    "dry-run:cloudflare": "npm run build:cloudflare && npx --yes wrangler@4.157.0 deploy --config worker/wrangler.production.jsonc --dry-run --outdir .local/cloudflare-dry-run",
+    "prepare:remote-release": "node scripts/prepare-remote-sql.mjs --check --package",
+    "dry-run:supabase": "npm run prepare:remote-release && npx --yes supabase@3.0.0 db push --workdir .local/remote-release --remote=iwzmsbkbuerleocismhj --dry-run --skip-vault"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

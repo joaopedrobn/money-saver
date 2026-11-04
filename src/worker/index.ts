@@ -8,6 +8,9 @@ export interface WorkerEnv {
   SUPABASE_URL: string
   SUPABASE_PUBLIC_KEY: string
   SYNC_VALIDATOR_TOKEN: string // Dedicated approval-only role, never service_role.
+  REMOTE_SYNC_ENABLED?: string
+  SYNC_ALLOWED_USER_IDS?: string
+  APP_ORIGINS?: string
 }
 export class SyncHttpError extends Error {
   constructor(
@@ -32,6 +35,31 @@ function reply(value: unknown, status = 200) {
   })
 }
 function localGate(env: WorkerEnv) {
+  if (env.LAB_ONLY === 'false') {
+    if (
+      env.REMOTE_SYNC_ENABLED !== 'true' ||
+      env.SUPABASE_URL !== 'https://iwzmsbkbuerleocismhj.supabase.co' ||
+      !env.SYNC_ALLOWED_USER_IDS ||
+      !env.APP_ORIGINS ||
+      !env.SYNC_VALIDATOR_TOKEN ||
+      !env.SUPABASE_PUBLIC_KEY
+    )
+      throw new SyncHttpError(503, 'SYNC_DISABLED')
+    try {
+      const claims = JSON.parse(
+        atob(env.SYNC_VALIDATOR_TOKEN.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
+      )
+      if (
+        claims.role !== 'money_saver_sync_validator' ||
+        typeof claims.exp !== 'number' ||
+        claims.exp * 1000 <= Date.now()
+      )
+        throw new Error()
+    } catch {
+      throw new SyncHttpError(503, 'VALIDATOR_CONFIGURATION')
+    }
+    return
+  }
   const url = new URL(env.SUPABASE_URL)
   if (
     env.LAB_ONLY !== 'true' ||
@@ -103,6 +131,8 @@ export default {
       const user = z
         .object({ id: z.uuid(), email_confirmed_at: z.string() })
         .parse(await userResponse.json())
+      if (env.LAB_ONLY === 'false' && !env.SYNC_ALLOWED_USER_IDS?.split(',').includes(user.id))
+        throw new SyncHttpError(403, 'ACCOUNT_NOT_ENABLED')
       async function rpc(name: string, body: unknown, privileged = false) {
         const response = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
           method: 'POST',

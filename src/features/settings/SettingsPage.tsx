@@ -16,6 +16,7 @@ export function SettingsPage({
 }) {
   const { kind } = useFinancialStorage()
   const sync = useContext(SyncSettingsContext)
+  const remote = sync && sync.projectUrl.startsWith('https:')
   return (
     <>
       <div className="settings-grid">
@@ -25,12 +26,16 @@ export function SettingsPage({
           <h2>Seu espaço financeiro</h2>
           <p>
             {sync
-              ? 'Réplica de homologação com IndexedDB e PostgreSQL locais.'
+              ? remote
+                ? 'Réplica IndexedDB com sincronização Supabase controlada.'
+                : 'Réplica de homologação com IndexedDB e PostgreSQL locais.'
               : 'Dados financeiros locais, sem sincronização externa.'}
           </p>
           <p>
             {sync
-              ? 'Somente dados fictícios. As operações usam fila persistente e o Worker local; produção continua desativada.'
+              ? remote
+                ? 'Operações usam outbox, JWT da conta e Worker confiável. Confira pendências, recibos e conflitos nas configurações.'
+                : 'Somente dados fictícios. As operações usam fila persistente e o Worker local; produção continua desativada.'
               : kind === 'account'
                 ? 'Este espaço é separado por conta somente neste navegador. Os registros não foram enviados para a conta online e não aparecem em outros dispositivos.'
                 : 'Este espaço sem conta é compartilhado por quem usa este perfil de navegador. Ele não pertence a uma conta conectada e não é sincronizado.'}
@@ -55,7 +60,13 @@ export function SettingsPage({
             </div>
             <div>
               <dt>Local dos dados</dt>
-              <dd>{sync ? 'Réplica IndexedDB e PostgreSQL local' : 'Este dispositivo e navegador'}</dd>
+              <dd>
+                {sync
+                  ? remote
+                    ? 'Réplica IndexedDB e Supabase'
+                    : 'Réplica IndexedDB e PostgreSQL local'
+                  : 'Este dispositivo e navegador'}
+              </dd>
             </div>
           </dl>
           <p>

@@ -4,6 +4,7 @@ export interface RemoteIdentity {
   user: User | null
   loading: boolean
   error: string
+  accessToken?: string
 }
 type AuthPort = Pick<SupabaseClient['auth'], 'getUser' | 'onAuthStateChange'>
 export const SESSION_CHECK_TIMEOUT_MS = 15_000
@@ -19,11 +20,18 @@ export function observeRemoteSession(
     revision = 0,
     verifiedUser: User | null = null
   let expiresAt: number | null = null
+  let acceptedSession: Session | null = null
   let verificationTimer: ReturnType<typeof setTimeout> | undefined
   let expiryTimer: ReturnType<typeof setTimeout> | undefined
   let eventTimer: ReturnType<typeof setTimeout> | undefined
   const emit = (state: RemoteIdentity) => {
-    if (!stopped) publish(state)
+    if (!stopped)
+      publish({
+        ...state,
+        ...(state.user && state.user.id === acceptedSession?.user.id && acceptedSession.access_token
+          ? { accessToken: acceptedSession.access_token }
+          : {}),
+      })
   }
   const cancelVerification = () => {
     clearTimeout(verificationTimer)
@@ -85,6 +93,7 @@ export function observeRemoteSession(
       })
   }
   const acceptSession = (session: Session | null) => {
+    acceptedSession = session
     revision++
     cancelVerification()
     clearTimeout(expiryTimer)

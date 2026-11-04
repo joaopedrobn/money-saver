@@ -11,8 +11,9 @@ export function authConfig(env: Record<string, unknown>, appUrl: string): AuthCo
   if (env.VITE_SUPABASE_AUTH_ENABLED !== 'true') return { enabled: false, error: '' }
   try {
     const url = new URL(String(env.VITE_SUPABASE_URL ?? ''))
-    const redirect = new URL(String(env.VITE_SUPABASE_AUTH_REDIRECT_URL ?? ''))
     const app = new URL(appUrl)
+    // Optional override is origin-checked; otherwise each deployment returns to itself.
+    const redirect = new URL(String(env.VITE_SUPABASE_AUTH_REDIRECT_URL ?? `${app.origin}/`))
     const local = (u: URL) => ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)
     if (
       (url.protocol !== 'https:' && !(url.protocol === 'http:' && local(url))) ||

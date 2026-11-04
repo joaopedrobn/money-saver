@@ -44,6 +44,7 @@ interface Head {
   lastServerCommittedAt?: string | null
   verificationError?: string
   connectionError?: string
+  importStaged?: boolean
 }
 interface Resolution {
   id: string
@@ -59,7 +60,12 @@ export class SyncLabDatabase extends FinancialDatabase {
   syncHead!: Table<Head, string>
   syncResolutions!: Table<Resolution, string>
   constructor(name: string) {
-    if (!name.startsWith('money-saver-sync-lab:'))
+    if (
+      !name.startsWith('money-saver-sync-lab:') &&
+      !/^money-saver-sync-remote:https%3A%2F%2Fiwzmsbkbuerleocismhj\.supabase\.co:[0-9a-f-]{36}$/.test(
+        name,
+      )
+    )
       throw new Error('Use um banco isolado de homologação.')
     super(name)
     this.version(5).stores({
@@ -114,6 +120,10 @@ export class TransportError extends Error {
 export function localWorkerTransport(baseUrl: string): SyncTransport {
   if (!/^http:\/\/127\.0\.0\.1:\d+(?:\/sync-api)?$/.test(baseUrl))
     throw new Error('Somente Worker local nesta fase.')
+  return workerTransport(baseUrl)
+}
+/** Remote caller must first validate its deployment configuration and explicit opt-in. */
+export function workerTransport(baseUrl: string): SyncTransport {
   async function call(path: string, body: unknown, token: string, signal: AbortSignal) {
     const response = await fetch(baseUrl + path, {
       method: body === undefined ? 'GET' : 'POST',
@@ -158,6 +168,7 @@ export class SyncClient {
     private session: () => SessionIdentity | null,
     private asOf: CivilDate,
     private clock = () => Date.now(),
+    readonly projectUrl = 'http://127.0.0.1:54321',
   ) {
     this.localRepositories = createLocalRepositories(db)
     const commands: Record<string, readonly string[]> = {
@@ -279,7 +290,7 @@ export class SyncClient {
     const identity = this.identity()
     if (
       plan.userId !== this.userId ||
-      plan.projectUrl !== 'http://127.0.0.1:54321' ||
+      plan.projectUrl !== this.projectUrl ||
       plan.localDatabase !== this.db.name
     )
       throw new Error('Prévia fora da homologação local.')
@@ -347,7 +358,7 @@ export class SyncClient {
     )
     const plan = await prepareInitialImport({
       operationId: crypto.randomUUID(),
-      scope: { userId: this.userId, projectUrl: 'http://127.0.0.1:54321' },
+      scope: { userId: this.userId, projectUrl: this.projectUrl },
       localDatabase: this.db.name,
       backup,
       remoteHead: {
@@ -361,6 +372,51 @@ export class SyncClient {
     })
     this.identity()
     return { backup, plan }
+  }
+  /** Explicit file selection only. Original browser datasets are never read or changed. */
+  async stageInitialBackup(value: unknown, confirmation: string) {
+    if (
+      this.projectUrl === 'http://127.0.0.1:54321' ||
+      confirmation !== 'PREPARAR IMPORTAÇÃO DE BACKUP'
+    )
+      throw new Error('Confirmação explícita de preparação obrigatória.')
+    const identity = this.identity()
+    const backup = validateBackup(value)
+    const remote = await this.transport.view(identity.accessToken, this.controller.signal)
+    if (remote.revision !== 0 || entities.some((e) => remote.data[e].length))
+      throw new Error('Destino não vazio.')
+    await prepareInitialImport({
+      operationId: crypto.randomUUID(),
+      scope: { projectUrl: this.projectUrl, userId: this.userId },
+      localDatabase: this.db.name,
+      backup,
+      asOf: this.asOf,
+      remoteHead: {
+        revision: remote.revision,
+        counts: Object.fromEntries(entities.map((e) => [e, remote.data[e].length])) as Record<
+          RemoteEntity,
+          number
+        >,
+      },
+    })
+    await this.db.transaction('rw', this.db.tables, async () => {
+      this.identity()
+      const head = await this.head()
+      const local = await backupOf(this.db)
+      if (
+        head.revision !== 0 ||
+        entities.some((e) => head.data[e].length || local.data[e].length) ||
+        (await this.pending()).length
+      )
+        throw new Error('A réplica deve estar vazia para preparar importação.')
+      for (const e of entities) await this.db.table(e).bulkAdd(backup.data[e])
+      await this.db.syncHead.update('head', {
+        importStaged: true,
+        verificationError:
+          'Importação preparada: conclua backup, prévia e confirmação antes de editar.',
+        lastCompletedAt: null,
+      })
+    })
   }
   private async install(data: WireData, revision: number, committedAt?: string) {
     const backup = decodeRemoteBackup(data, this.userId)
@@ -527,7 +583,7 @@ export class SyncClient {
       )
       const manifest = await reconciliationManifest(
         decodeRemoteBackup(remote.data, this.userId),
-        this.asOf,
+        JSON.parse(op.payloadText).asOf as CivilDate,
       )
       if ((await sha256(canonicalJson(manifest))) !== op.manifestHash)
         throw new SyncIntegrityError('Reconciliação divergente. Operação preservada para revisão.')
@@ -586,6 +642,8 @@ export class SyncClient {
     if ((await this.pending()).length)
       throw new Error('Resolva a fila antes de aplicar dados remotos.')
     const head = await this.head()
+    if (head.importStaged)
+      throw new Error('Importação preparada: leitura remota suspensa até confirmação explícita.')
     let remote: Awaited<ReturnType<SyncClient['readChanges']>>
     try {
       remote = await this.readChanges(head, identity.accessToken)
@@ -604,7 +662,11 @@ export class SyncClient {
     }
     await this.db.transaction('rw', this.db.tables, async () => {
       this.identity()
-      if ((await this.pending()).length || (await this.head()).revision !== head.revision)
+      if (
+        (await this.pending()).length ||
+        (await this.head()).revision !== head.revision ||
+        (await this.head()).importStaged
+      )
         throw new Error('Estado local mudou durante a leitura.')
       await this.install(remote.data, remote.revision)
     })

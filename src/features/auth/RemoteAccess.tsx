@@ -30,6 +30,8 @@ import {
   type RecoveryGrant,
 } from './access-state'
 import './auth.css'
+import { RemoteFinanceProvider } from '@/infrastructure/sync/RemoteFinanceProvider'
+import { StorageNotice } from './StorageNotice'
 
 const AccountContext = createContext<ReactNode>(null)
 export function UserAccountMenu() {
@@ -229,11 +231,7 @@ export function RemoteAccess({ children }: { children: ReactNode }) {
               : 'Sem conta conectada'}
         </strong>
         {identity.user && <p className="account-email">{identity.user.email}</p>}
-        <p>
-          {local
-            ? 'Espaço sem conta: dados compartilhados por quem usa este perfil de navegador, sem vínculo com a conta conectada.'
-            : 'Dados salvos somente neste navegador, em um espaço local separado por conta. Nenhum dado financeiro foi enviado à nuvem.'}
-        </p>
+        <StorageNotice local={local} />
         {actionError && <p role="alert">{actionError}</p>}
         {identity.user && (
           <p>
@@ -279,7 +277,12 @@ export function RemoteAccess({ children }: { children: ReactNode }) {
     return (
       <AccountContext.Provider value={menu}>
         <LocalFinanceProvider key={financialDatabaseName(scope)} scope={scope}>
-          {children}
+          <RemoteFinanceProvider
+            key={financialDatabaseName(scope)}
+            identity={local ? { user: null, loading: false, error: '' } : identity}
+          >
+            {children}
+          </RemoteFinanceProvider>
         </LocalFinanceProvider>
       </AccountContext.Provider>
     )

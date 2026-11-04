@@ -4,7 +4,10 @@ import { resolve, join } from 'node:path'
 import process from 'node:process'
 
 const root = resolve(import.meta.dirname, '..')
-export async function buildSyncWorker(outDir = join(root, '.local/worker-dist')) {
+export async function buildSyncWorker(
+  outDir = join(root, '.local/worker-dist'),
+  entry = 'index.ts',
+) {
   if (process.version !== 'v26.7.0')
     throw new Error('Use Node.js 26.7.0 for the synchronization lab.')
   return build({
@@ -18,7 +21,7 @@ export async function buildSyncWorker(outDir = join(root, '.local/worker-dist'))
       outDir,
       emptyOutDir: false,
       lib: {
-        entry: join(root, 'src/worker/index.ts'),
+        entry: join(root, 'src/worker', entry),
         formats: ['es'],
         fileName: () => 'index.js',
       },
@@ -26,4 +29,7 @@ export async function buildSyncWorker(outDir = join(root, '.local/worker-dist'))
   })
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
-  await buildSyncWorker()
+  await buildSyncWorker(
+    undefined,
+    process.argv.includes('--cloudflare') ? 'cloudflare.ts' : 'index.ts',
+  )

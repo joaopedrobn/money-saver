@@ -1,5 +1,7 @@
 # Money Saver
 
+Uso em outro computador, sem Docker: [guia do PC de casa](docs/home-setup.md). Estado e aprovações da infraestrutura remota: [plano de publicação](docs/remote-release-plan.md). Sincronização de produção permanece desativada até revisão e teste remoto autorizados.
+
 Aplicativo de gestão financeira pessoal com interface em português, tema escuro e persistência local. A fase **2.2** acrescenta cartões de crédito, compras, parcelas, faturas, pagamentos, estornos, créditos e projeção de caixa ao motor bancário da fase 2.1. A arquitetura e os cadastros anteriores foram preservados. A fase **3.1** prepara Supabase e autenticação opcional, mantendo todos os dados financeiros locais. Não há sincronização bancária, migração automática ou dados financeiros de demonstração.
 
 ## Fase 2.2 — cartões e faturas

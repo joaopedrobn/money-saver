@@ -177,7 +177,11 @@ export async function prepareInitialImport(input: {
   const isolatedLab =
     input.scope.projectUrl === 'http://127.0.0.1:54321' &&
     input.localDatabase.startsWith(`money-saver-sync-lab:${input.scope.userId}:`)
-  if (input.localDatabase !== financialDatabaseName(input.scope) && !isolatedLab)
+  const isolatedRemote =
+    input.scope.projectUrl === 'https://iwzmsbkbuerleocismhj.supabase.co' &&
+    input.localDatabase ===
+      `money-saver-sync-remote:${encodeURIComponent(input.scope.projectUrl)}:${input.scope.userId}`
+  if (input.localDatabase !== financialDatabaseName(input.scope) && !isolatedLab && !isolatedRemote)
     throw new Error('O espaço local não corresponde ao usuário/projeto selecionado.')
   if (
     input.remoteHead.revision !== 0 ||

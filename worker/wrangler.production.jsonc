@@ -1,0 +1,22 @@
+{
+  "name": "money-saver",
+  "account_id": "8640e4b83ec3bcfaf338412bc5345897",
+  "main": "../.local/cloudflare-worker/index.js",
+  "no_bundle": true,
+  "compatibility_date": "2026-11-04",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/sync-api/*"],
+  },
+  "vars": {
+    "LAB_ONLY": "false",
+    "SUPABASE_URL": "https://iwzmsbkbuerleocismhj.supabase.co",
+    "REMOTE_SYNC_ENABLED": "false",
+    "SYNC_ALLOWED_USER_IDS": "",
+    "APP_ORIGINS": "https://money-saver.quem-votar-jp.workers.dev,http://127.0.0.1:5173,http://localhost:5173",
+  },
+}

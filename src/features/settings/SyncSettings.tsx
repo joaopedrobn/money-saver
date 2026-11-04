@@ -41,6 +41,7 @@ export function SyncSettings() {
   return client ? <ConnectedSyncSettings key={client.db.name} client={client} /> : <SyncStatus />
 }
 function ConnectedSyncSettings({ client }: { client: SyncClient }) {
+  const remote = client.projectUrl !== 'http://127.0.0.1:54321'
   const [version, setVersion] = useState(0),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('')
@@ -50,6 +51,7 @@ function ConnectedSyncSettings({ client }: { client: SyncClient }) {
   const [confirmation, setConfirmation] = useState(''),
     [resolution, setResolution] = useState(''),
     [retry, setRetry] = useState('')
+  const [staging, setStaging] = useState('')
   const view = useLiveQuery(
     async () => ({ state: await client.status(), pending: await client.pending() }),
     [client, version],
@@ -79,12 +81,45 @@ function ConnectedSyncSettings({ client }: { client: SyncClient }) {
         aria-label="Controles de sincronização local"
         aria-busy={busy}
       >
-        <h2>Sincronização em homologação local</h2>
+        <h2>{remote ? 'Sincronização remota controlada' : 'Sincronização em homologação local'}</h2>
         <p>
-          Somente dados fictícios e PostgreSQL local. A sincronização de produção permanece
-          desativada.
+          {remote
+            ? 'Réplica deste dispositivo e Supabase. Registros antigos do navegador permanecem separados. Nenhuma importação automática.'
+            : 'Somente dados fictícios e PostgreSQL local. A sincronização de produção permanece desativada.'}
         </p>
         {error && <p role="alert">{error}</p>}
+        {remote && (
+          <fieldset disabled={busy}>
+            <legend>Preparar importação inicial de um backup</legend>
+            <p>
+              Exporte primeiro o espaço local antigo. Selecione esse arquivo somente após autorizar
+              a importação pessoal. O destino e a réplica devem estar vazios. Nenhum envio ocorre
+              nesta preparação; depois confira a prévia e confirme o envio separadamente.
+            </p>
+            <label htmlFor="sync-stage">Digite PREPARAR IMPORTAÇÃO DE BACKUP</label>
+            <input id="sync-stage" value={staging} onChange={(e) => setStaging(e.target.value)} />
+            <input
+              aria-label="Backup para prévia"
+              type="file"
+              accept=".json,application/json"
+              disabled={staging !== 'PREPARAR IMPORTAÇÃO DE BACKUP'}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file)
+                  void act(async () => {
+                    if (file.size > 10 * 1024 * 1024) throw new Error('Backup excede 10 MB.')
+                    await client.stageInitialBackup(JSON.parse(await file.text()), staging)
+                    setMigration(await client.prepareMigration())
+                    setStaging('')
+                    setDownloaded(false)
+                    setSaved(false)
+                    setConfirmation('')
+                  })
+              }}
+            />
+          </fieldset>
+        )}
         <div className="form-actions">
           <Button
             disabled={busy || !view || view.state.phase === 'local'}
@@ -184,7 +219,7 @@ function ConnectedSyncSettings({ client }: { client: SyncClient }) {
           <fieldset disabled={busy}>
             <legend>Prévia de migração inicial</legend>
             <p>
-              Destino consultado: PostgreSQL local vazio, revisão zero. Proprietário fictício:{' '}
+              Destino consultado: {client.projectUrl}, vazio, revisão zero. Proprietário:{' '}
               <code>{migration.plan.userId}</code>.
             </p>
             <p>
@@ -259,8 +294,9 @@ function ConnectedSyncSettings({ client }: { client: SyncClient }) {
               autoComplete="off"
             />
             <p>
-              Nesta homologação, a expressão confirma envio exclusivamente ao banco local, sem
-              acesso à produção.
+              {remote
+                ? 'Esta confirmação envia o conjunto completo para sua conta no Supabase. Confira destino, backup e totais antes de continuar.'
+                : 'Nesta homologação, a expressão confirma envio exclusivamente ao banco local, sem acesso à produção.'}
             </p>
             <Button
               disabled={
@@ -282,7 +318,7 @@ function ConnectedSyncSettings({ client }: { client: SyncClient }) {
                 })
               }
             >
-              Confirmar importação no banco local
+              {remote ? 'Confirmar importação na nuvem' : 'Confirmar importação no banco local'}
             </Button>
           </fieldset>
         )}

@@ -179,12 +179,21 @@ function Workspace() {
             </span>
             <strong>Seu dinheiro. Seus dados.</strong>
             <p>
-              {testSync ? 'Réplica de homologação.' : 'Salvos neste navegador.'}
+              {testSync
+                ? testSync.projectUrl.startsWith('https:')
+                  ? 'Réplica da nuvem.'
+                  : 'Réplica de homologação.'
+                : 'Salvos neste navegador.'}
               <br />
               Privados por natureza.
             </p>
             <span className="local-status">
-              <i /> {testSync ? 'Outbox e PostgreSQL locais' : 'Armazenamento local'}
+              <i />{' '}
+              {testSync
+                ? testSync.projectUrl.startsWith('https:')
+                  ? 'Outbox e Supabase'
+                  : 'Outbox e PostgreSQL locais'
+                : 'Armazenamento local'}
             </span>
           </div>
           <button className="help-link" onClick={() => setHelp(true)}>
