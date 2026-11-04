@@ -16,7 +16,12 @@ export function SettingsPage({
         <BackupPanel notify={notify} hidden={hidden} />
         <section className="panel settings-panel">
           <h2>Seu espaço financeiro</h2>
-          <p>Dados locais, sem login ou sincronização externa.</p>
+          <p>Dados financeiros locais, sem sincronização externa.</p>
+          <p>
+            <a className="text-link" href="#online">
+              Conta online · autenticação opcional
+            </a>
+          </p>
           <dl>
             <div>
               <dt>Moeda</dt>

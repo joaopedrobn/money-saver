@@ -38,6 +38,8 @@ import { AccountStatement } from '@/features/accounts/AccountStatement'
 import { NewMovementForm as MovementForm } from '@/features/movements/NewMovementForm'
 import { CardsPage } from '@/features/cards/CardsPage'
 import { PlanningPage } from '@/features/planning/PlanningPage'
+import { ReportsPage } from '@/features/reports/ReportsPage'
+import { RemoteAccess } from '@/features/auth/RemoteAccess'
 
 const navigation = [
   { id: 'dashboard', label: 'Visão geral', icon: LayoutDashboard },
@@ -72,7 +74,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
 export function App() {
   return (
     <ErrorBoundary>
-      <Workspace />
+      <RemoteAccess>
+        <Workspace />
+      </RemoteAccess>
     </ErrorBoundary>
   )
 }
@@ -237,7 +241,9 @@ function Workspace() {
               <div className="eyebrow">
                 {page === 'dashboard'
                   ? 'MAIS CLAREZA, MELHORES ESCOLHAS'
-                  : 'SEU CONTROLE FINANCEIRO'}
+                  : page === 'reports'
+                    ? 'ANÁLISE FINANCEIRA'
+                    : 'SEU CONTROLE FINANCEIRO'}
               </div>
               <h1>
                 {page === 'dashboard' ? 'Suas finanças, em perspectiva' : selected.label}
@@ -246,11 +252,13 @@ function Workspace() {
               <p>
                 {page === 'dashboard'
                   ? 'Um olhar tranquilo para o seu dinheiro. Tudo começa por aqui.'
-                  : page === 'accounts'
-                    ? 'Cada conta no seu lugar. Seu patrimônio em uma só visão.'
-                    : page === 'settings'
-                      ? 'Um espaço que respeita suas escolhas e seus dados.'
-                      : 'Mais organização para acompanhar cada parte da sua vida financeira.'}
+                  : page === 'reports'
+                    ? 'Receitas, consumo e saldos por período.'
+                    : page === 'accounts'
+                      ? 'Cada conta no seu lugar. Seu patrimônio em uma só visão.'
+                      : page === 'settings'
+                        ? 'Um espaço que respeita suas escolhas e seus dados.'
+                        : 'Mais organização para acompanhar cada parte da sua vida financeira.'}
               </p>
             </div>
             {(page === 'dashboard' || page === 'accounts') && (
@@ -390,7 +398,7 @@ function Workspace() {
           ) : page === 'transactions' ? (
             <MovementsPage key={page} data={data} money={money} notify={setNotice} />
           ) : (
-            <FuturePage page={page} onAccounts={() => navigate('accounts')} />
+            <ReportsPage data={data} money={money} hidden={hidden} />
           )}
           <footer className="content-footer">
             <span>
@@ -540,75 +548,5 @@ function Nav({ page, navigate }: { page: Page; navigate: (id: Page) => void }) {
         </button>
       ))}
     </nav>
-  )
-}
-function FuturePage({ page, onAccounts }: { page: 'reports'; onAccounts: () => void }) {
-  const content = {
-    cards: {
-      icon: CreditCard,
-      title: 'Mais controle. Da compra à fatura.',
-      description: 'Cartões, limites, parcelamentos e faturas em um único lugar.',
-      items: [
-        'Cartões vinculados às suas contas',
-        'Fechamento, vencimento e limite',
-        'Parcelas e pagamentos rastreáveis',
-      ],
-    },
-    transactions: {
-      icon: ArrowLeftRight,
-      title: 'Cada movimento conta uma história.',
-      description: 'Um registro claro de tudo que entra e sai da sua vida.',
-      items: [
-        'Receitas e despesas por categoria',
-        'Pix, débito e transferências',
-        'Movimentações realizadas e futuras',
-      ],
-    },
-    planning: {
-      icon: CalendarDays,
-      title: 'Espaço para os seus próximos planos.',
-      description: 'Antecipe compromissos e faça escolhas com mais tranquilidade.',
-      items: [
-        'Calendário financeiro',
-        'Despesas fixas e recorrentes',
-        'Projeções com previsões identificadas',
-      ],
-    },
-    reports: {
-      icon: ChartNoAxesCombined,
-      title: 'Transforme números em clareza.',
-      description: 'Entenda seus hábitos e acompanhe sua evolução financeira.',
-      items: [
-        'Análises por período e categoria',
-        'Evolução de receitas e despesas',
-        'Indicadores para suas decisões',
-      ],
-    },
-  }[page]
-  const Icon = content.icon
-  return (
-    <section className="panel future-page">
-      <span className="phase-badge">PRÓXIMA ETAPA</span>
-      <span className="empty-icon large">
-        <Icon size={32} />
-      </span>
-      <h2>{content.title}</h2>
-      <p>
-        {content.description}
-        <br />
-        Este módulo ainda não está disponível.
-      </p>
-      <div className="future-features">
-        {content.items.map((item, i) => (
-          <div key={item}>
-            <span>0{i + 1}</span>
-            {item}
-          </div>
-        ))}
-      </div>
-      <Button variant="outline" onClick={onAccounts}>
-        Organizar minhas contas <ArrowUpRight size={16} />
-      </Button>
-    </section>
   )
 }

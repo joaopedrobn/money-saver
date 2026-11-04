@@ -29,6 +29,7 @@ import {
 import { DexieBackupRepository } from './backup-repository'
 import { DexiePlanningRepository } from './planning-repository'
 import { DexieCreditRepository, DexieSettingsRepository } from './credit-repository'
+import { selectPersistenceBackend } from './supabase/config'
 function validate(input: AccountInput): AccountInput {
   const parsed = accountFormSchema.parse({
     ...input,
@@ -167,6 +168,7 @@ const read = <T extends Entity>(table: {
   toArray(): Promise<T[]>
   get(id: string): Promise<T | undefined>
 }): ReadRepository<T> => ({ list: () => table.toArray(), get: (id) => table.get(id) })
+export const activePersistenceBackend = selectPersistenceBackend()
 export const repositories: FinancialRepositories = {
   planning: new DexiePlanningRepository(db),
   accounts: new DexieAccountRepository(db),

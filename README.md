@@ -1,6 +1,6 @@
 # Money Saver
 
-Aplicativo de gestão financeira pessoal com interface em português, tema escuro e persistência local. A fase **2.2** acrescenta cartões de crédito, compras, parcelas, faturas, pagamentos, estornos, créditos e projeção de caixa ao motor bancário da fase 2.1. A arquitetura e os cadastros anteriores foram preservados. Não há autenticação, Supabase, sincronização bancária, serviços externos ou dados financeiros de demonstração.
+Aplicativo de gestão financeira pessoal com interface em português, tema escuro e persistência local. A fase **2.2** acrescenta cartões de crédito, compras, parcelas, faturas, pagamentos, estornos, créditos e projeção de caixa ao motor bancário da fase 2.1. A arquitetura e os cadastros anteriores foram preservados. A fase **3.1** prepara Supabase e autenticação opcional, mantendo todos os dados financeiros locais. Não há sincronização bancária, migração automática ou dados financeiros de demonstração.
 
 ## Fase 2.2 — cartões e faturas
 
@@ -74,9 +74,9 @@ Os repositórios verificam contas, categorias, datas, status e centavos antes de
 
 ## Executar localmente
 
-Ambiente escolhido para este projeto: **Node.js 25.x**, com npm. A revisão foi executada com **Node 25.9.0 e npm 11.12.1**. `engines.node` e `.nvmrc` indicam a versão principal 25, sem fixar um patch desnecessariamente. Os scripts verificam o Node efetivamente utilizado antes de instalar, iniciar, compilar ou testar.
+Ambiente escolhido para este projeto: **Node.js 26.x**, com npm. A migração foi validada com **Node 26.7.0 e npm 11.19.0**. `engines.node` e `.nvmrc` indicam a versão principal 26, incluindo 26.7.0, sem fixar um patch desnecessariamente. Os scripts verificam o Node efetivamente utilizado antes de instalar, iniciar, compilar ou testar.
 
-**Ressalva de compatibilidade:** o Vitest 5.1.0 travado no lockfile declara `^22.12.0 || ^24.0.0 || >=26.0.0`, excluindo formalmente Node 25. O `npm ci` emite `EBADENGINE` para esse pacote, embora os **133 testes tenham passado no Node 25.9.0**. Não há versão corretiva na mesma linha que inclua 25 na declaração consultada. A biblioteca foi preservada; passar nos testes não altera o suporte declarado pelo mantenedor. Veja o [relatório da revisão Node 25](docs/node25-review.md).
+O Vitest 5.1.0 travado no lockfile declara `^22.12.0 || ^24.0.0 || >=26.0.0`, incluindo Node 26.7.0. O [relatório histórico da revisão Node 25](docs/node25-review.md) foi preservado com os resultados e a ressalva de compatibilidade daquele ambiente.
 
 Utilize sempre a mesma origem/porta: o IndexedDB é separado por protocolo, host, porta e perfil do navegador.
 
@@ -88,7 +88,7 @@ npm run dev
 
 Acesse o endereço mostrado no terminal, normalmente **http://127.0.0.1:5173/**. O servidor escuta somente na interface local.
 
-O helper Windows usa Node 25 do PATH ou uma instalação 25 já existente em `NVM_HOME`. Executa o npm da **mesma instalação** e ajusta o PATH apenas para o processo e seus filhos. Não usa mais o Node portátil 22, não baixa executáveis, não troca a seleção global do NVM e preserva os argumentos dos comandos. Pode ser chamado de outra pasta, pois executa os comandos na raiz do projeto:
+O helper Windows usa Node 26 do PATH ou uma instalação 26 já existente em `NVM_HOME`. Executa o npm da **mesma instalação** e ajusta o PATH apenas para o processo e seus filhos. Não usa mais o Node portátil 22, não baixa executáveis, não troca a seleção global do NVM e preserva os argumentos dos comandos. Pode ser chamado de outra pasta, pois executa os comandos na raiz do projeto:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .tooling.ps1 run dev
@@ -109,7 +109,7 @@ Nenhuma dependência foi atualizada nesta revisão. O `package-lock.json` foi pr
 - Persistência em IndexedDB, atualização reativa entre componentes/abas e erros de armazenamento visíveis.
 - Auditoria de criação, edição e exclusão na mesma transação do cadastro. Contas com movimentos ou vínculos não podem ser excluídas; saldo/data inicial não podem ser alterados após movimentos.
 - Configurações com informações de privacidade, categorias e exportação/importação validada de todas as tabelas.
-- Cartões, compras, parcelas, faturas, pagamentos e estornos estão funcionais. Apenas a página de relatórios avançados continua como próxima etapa; os indicadores do dashboard já incluem consumo no crédito.
+- Cartões, compras, parcelas, faturas, pagamentos e estornos estão funcionais. Relatórios incluem análise por período, categoria, conta e cartão, reutilizando o consumo no crédito do dashboard.
 
 ## Arquitetura
 
@@ -209,10 +209,28 @@ Validação da Fase 2.3: **142 testes aprovados**, TypeScript, lint e build apro
 2. Refinar o acompanhamento individual de liquidação de parcelas compartilhando fatura; nesta fase pagamentos liquidam a fatura e o bloqueio de edição financeira é conservador sobre seu histórico inteiro.
 3. Avaliar fluxos de renegociação/parcelamento de fatura e retorno de crédito para conta bancária, sempre com operações explícitas e novas regras/testes.
 4. Calendário detalhado e eventuais políticas adicionais de recorrência; cadastro, confirmação e projeção de recorrências já funcionam na Fase 2.3.
-5. Página de relatórios avançados, além dos indicadores já entregues no dashboard.
+5. Exportação de relatórios e análises adicionais, se necessárias.
 6. Mesclagem/importação incremental de backups, se necessária; a restauração atual substitui o conjunto completo após confirmação.
-7. Adaptador Supabase, autenticação e Open Finance somente em etapas futuras autorizadas.
+7. Escritas transacionais Supabase e migração explícita na fase 3.2; Open Finance somente em etapa futura autorizada.
 
 Os dados existem somente no perfil deste navegador e dispositivo. A exportação permite guardá-los; limpar os dados do navegador ou usar outro host/porta/perfil pode removê-los ou fazê-los parecer ausentes. O tema e o idioma são fixos nesta etapa. Nenhum deploy ou push remoto foi realizado.
 
+### Fase 2.4 — relatórios
+
+**Relatórios** reúne receitas realizadas, consumo líquido, resultado, saldos bancários e comparação com o período anterior. Filtros: mês, intervalo personalizado, últimos 3/6/12 meses (até hoje), conta, cartão e categoria. Conta e cartão selecionam origens alternativas de consumo; compras não são atribuídas à conta sugerida do cartão. Saldos usam o histórico bancário completo, filtrado apenas por conta e período.
+
+Os cinco gráficos Recharts incluem tabelas consultáveis, estados vazios e ocultação de valores. A apuração começa com a preferência salva e pode ser alternada nesta página entre compra e competência das parcelas. Estornos reduzem o consumo; pagamentos de fatura, transferências e ajustes não o duplicam. Meses completos comparam com meses anteriores; intervalos parciais comparam com os dias imediatamente anteriores, de igual duração. Períodos com datas futuras mostram somente dados realizados até hoje.
+
+O seletor de consumo é compartilhado com o resumo mensal; valores continuam em centavos inteiros. Sem novas dependências, alterações de schema ou gravações nos dados financeiros. Validação com Node **26.7.0** e npm **11.19.0**: TypeScript, lint, **148 testes** (142 existentes + 6 novos) e build aprovados. Os novos testes cobrem comparação, categorias, parcelas, movimentações bancárias, filtros e estornos. A inspeção visual permanece pendente: a ferramenta retornou `The browser access host is unavailable`.
+
+### Fase 3.1 — Supabase e autenticação
+
+Fundação PostgreSQL com 16 tabelas, UUIDs por proprietário, centavos inteiros, FKs compostas, índices, RLS/FORCE RLS e políticas por usuário em [duas migrações SQL](supabase/migrations). O adaptador remoto compatível está preparado para leitura consistente; escritas remotas permanecem bloqueadas tanto no adaptador quanto nos grants. IndexedDB v4 continua ativo, inclusive após login/logout, sem envio ou migração de dados.
+
+**Configurações → Conta online** prepara cadastro, login, logout, recuperação/nova senha, sessão persistente e painel autenticado. Auth só é habilitado por configuração explícita e completa em `.env.local`, usando [`.env.example`](.env.example); apenas chave publishable, nunca secret/service role. Sem Supabase, o modo local permanece disponível. O [guia da fundação](docs/supabase-foundation.md) documenta a arquitetura, configuração externa, testes SQL e o plano de importação, conflitos, comparação financeira e rollback para a fase 3.2. Nenhum projeto remoto foi criado. A execução SQL/RLS e os fluxos reais de e-mail dependem de ambiente de teste configurado.
+
 Referências de configuração: [Vite](https://vite.dev/guide/), [Tailwind v4 com Vite](https://tailwindcss.com/docs/installation/using-vite) e [shadcn/ui com Vite](https://ui.shadcn.com/docs/installation/vite).
+
+Conexão ao projeto Supabase informado: configuração e vínculo estão em [supabase-connection.md](docs/supabase-connection.md). As duas migrações foram aplicadas com autorização explícita em 04/11/2026; [histórico e verificações de segurança](docs/supabase-application-2026-11-04.md). O `.env.local` fica ignorado pelo Git. IndexedDB permanece ativo; escritas financeiras remotas e migração de dados continuam bloqueadas.
+
+**Fase 3.1.1:** Auth real respondeu com cadastro por e-mail habilitado e confirmação obrigatória. Sessões ganharam verificação com prazo, retentativa, tratamento de expiração e proteção contra respostas atrasadas. TypeScript, lint, **163 testes** e build aprovados; sem novas dependências. URLs de retorno e senha mínima ainda dependem do Dashboard; testes completos com contas e isolamento em ambiente descartável permanecem pendentes, conforme solicitado. [Validação e requisitos da fase 3.2](docs/supabase-auth-validation.md).

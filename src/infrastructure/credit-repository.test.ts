@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, it, expect } from 'vitest'
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import Dexie from 'dexie'
 import { FinancialDatabase } from './database'
 import { DexieAccountRepository } from './repositories'
@@ -49,6 +49,7 @@ beforeEach(async () => {
   card = await r.createCard(cardInput())
 })
 afterEach(async () => {
+  vi.useRealTimers()
   await d.delete()
 })
 function cardInput(overrides: Partial<CardInput> = {}): CardInput {
@@ -367,6 +368,9 @@ describe('invoice payments, refunds and credits', () => {
     expect(summary.invoices.every((v) => v.remaining >= 0 && v.totalDue >= 0)).toBe(true)
   })
   it('applies excess credit explicitly between invoices without bank or consumption effects', async () => {
+    // applyCredit uses today's civil date; keep this historical assertion deterministic.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-03T12:00:00-03:00'))
     const p = await r.createPurchase(input({ amountCents: 100000 }))
     await r.pay({
       invoiceId: (await inv()).id,

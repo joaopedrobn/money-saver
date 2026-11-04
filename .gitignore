@@ -2,5 +2,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env*
+/.env.local
 !.env.example
 .local/
+/supabase/.temp/
+/supabase/.branches/

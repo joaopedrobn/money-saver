@@ -195,10 +195,11 @@ export function creditConsumption(
   const active = (s.purchases ?? []).filter((p) => purchaseActive(p) && p.date <= asOf),
     purchases = new Map(active.map((p) => [p.id, p])),
     invoices = new Map((s.invoices ?? []).map((i) => [i.id, i]))
-  const rows: { categoryId: string; amountCents: number; date: string }[] =
+  const rows: { categoryId: string; cardId: string; amountCents: number; date: string }[] =
     regime === 'purchase'
       ? active.map((p) => ({
           categoryId: p.categoryId,
+          cardId: p.cardId,
           amountCents: sumCents([p.amountCents, p.feeCents ?? 0]),
           date: p.date,
         }))
@@ -206,6 +207,7 @@ export function creditConsumption(
           .filter((i) => purchases.has(i.purchaseId))
           .map((i) => ({
             categoryId: purchases.get(i.purchaseId)!.categoryId,
+            cardId: purchases.get(i.purchaseId)!.cardId,
             amountCents: i.amountCents,
             date: `${invoices.get(i.invoiceId)!.period}-01`,
           }))
@@ -219,6 +221,7 @@ export function creditConsumption(
       if (categoryId)
         rows.push({
           categoryId,
+          cardId: invoices.get(e.invoiceId)!.cardId,
           amountCents:
             e.amountCents * (e.kind === 'refund' || e.kind === 'charge-reversal' ? -1 : 1),
           date: regime === 'installment' ? `${invoices.get(e.invoiceId)!.period}-01` : e.date,

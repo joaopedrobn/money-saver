@@ -2,9 +2,9 @@ import { realpathSync } from 'node:fs'
 import process from 'node:process'
 import console from 'node:console'
 
-if (Number(process.versions.node.split('.')[0]) !== 25) {
+if (Number(process.versions.node.split('.')[0]) !== 26) {
   console.error(
-    `Money Saver requer Node.js 25.x. Detectado ${process.version}. Ative o Node 25 existente e tente novamente.`,
+    `Money Saver requer Node.js 26.x. Detectado ${process.version}. Ative o Node 26 existente e tente novamente.`,
   )
   process.exitCode = 1
 } else if (!process.argv.includes('--check')) {

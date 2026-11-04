@@ -145,6 +145,38 @@ export function statement(s: FinancialSnapshot, accountId: string, asOf: CivilDa
     })
 }
 /** Consumption indicators exclude transfers and balance adjustments. */
+export function consumptionRows(
+  s: FinancialSnapshot,
+  from: string,
+  to: string,
+  asOf: CivilDate,
+  regime: CreditRegime = 'purchase',
+) {
+  return [
+    ...s.transactions
+      .filter(
+        (t) =>
+          t.status === 'settled' &&
+          realizedDate(t) >= from &&
+          realizedDate(t) <= to &&
+          realizedDate(t) <= asOf,
+      )
+      .map((t) => ({
+        categoryId: t.categoryId,
+        accountId: t.accountId,
+        cardId: '',
+        date: realizedDate(t) as string,
+        direction: t.direction,
+        amountCents: t.amountCents,
+      })),
+    ...creditConsumption(s, from, to, asOf, regime).map((r) => ({
+      ...r,
+      accountId: '',
+      direction: 'expense' as const,
+    })),
+  ]
+}
+
 export function monthlySummary(
   s: FinancialSnapshot,
   month: Date,
@@ -153,31 +185,18 @@ export function monthlySummary(
 ) {
   const from = format(startOfMonth(month), 'yyyy-MM-dd'),
     to = format(endOfMonth(month), 'yyyy-MM-dd')
-  const settled = s.transactions.filter(
-    (t) =>
-      t.status === 'settled' &&
-      realizedDate(t) >= from &&
-      realizedDate(t) <= to &&
-      realizedDate(t) <= asOf,
-  )
-  const creditRows = creditConsumption(s, from, to, asOf, regime)
-  const income = sumCents(
-      settled.filter((t) => t.direction === 'income').map((t) => t.amountCents),
-    ),
-    expense = sumCents([
-      ...settled.filter((t) => t.direction === 'expense').map((t) => t.amountCents),
-      ...creditRows.map((r) => r.amountCents),
-    ])
+  const rows = consumptionRows(s, from, to, asOf, regime)
+  const income = sumCents(rows.filter((t) => t.direction === 'income').map((t) => t.amountCents)),
+    expense = sumCents([...rows.filter((t) => t.direction === 'expense').map((t) => t.amountCents)])
   const categories = s.categories
     .map((c) => ({
       id: c.id,
       name: c.name,
       color: c.color,
       amountCents: sumCents([
-        ...settled
+        ...rows
           .filter((t) => t.categoryId === c.id && t.direction === 'expense')
           .map((t) => t.amountCents),
-        ...creditRows.filter((r) => r.categoryId === c.id).map((r) => r.amountCents),
       ]),
     }))
     .filter((c) => c.amountCents !== 0)
