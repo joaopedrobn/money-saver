@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { CreditCard } from '@/domain/models'
 import type { FinanceData } from '@/hooks/use-finances'
 import { formatMoneyInput, parseBRL } from '@/domain/money'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { accountColors } from '@/features/accounts/constants'
 export function CardForm({
@@ -16,6 +16,7 @@ export function CardForm({
   card?: CreditCard
   onDone: () => void
 }) {
+  const repositories = useRepositories()
   const [error, setError] = useState('')
   const {
     register,

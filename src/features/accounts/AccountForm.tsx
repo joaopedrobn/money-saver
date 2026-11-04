@@ -6,7 +6,7 @@ import { LoaderCircle, Check } from 'lucide-react'
 import { accountFormSchema, type AccountFormValues } from '@/domain/validation'
 import type { BankAccount, CivilDate } from '@/domain/models'
 import { parseBRL, formatMoneyInput } from '@/domain/money'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { accountTypes, accountColors } from './constants'
 export function AccountForm({
@@ -18,6 +18,7 @@ export function AccountForm({
   onDone: () => void
   onCancel: () => void
 }) {
+  const repositories = useRepositories()
   const [error, setError] = useState('')
   const {
     register,

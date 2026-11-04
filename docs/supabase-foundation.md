@@ -1,5 +1,7 @@
 # Fase 3.1 — fundação Supabase
 
+Preparação seguinte: [Fase 3.2A — sincronização ainda desativada](phase32a-sync-foundation.md), com RPC candidata fora das migrações e execução de segurança em ambiente descartável pendente.
+
 Atualização: migrações aplicadas em 04/11/2026 e verificadas no [relatório de aplicação](supabase-application-2026-11-04.md). Validação de Auth e gates para sincronização: [fase 3.1.1](supabase-auth-validation.md). Os resultados de teste e as limitações abaixo registram a entrega original da fundação.
 
 ## Estado e limites
@@ -22,24 +24,24 @@ O SDK é carregado sob demanda somente com autenticação habilitada e configura
 
 Todas as tabelas SQL possuem `user_id → auth.users.id` e chave primária `(user_id, id)`. IDs permanecem UUID; categorias padrão podem repetir seu UUID entre usuários. Datas são `date`, competências são `YYYY-MM`, instantes são `timestamptz`, dinheiro usa `bigint` restrito à faixa aceita pelo domínio. Não há colunas de saldo calculado, dívida residual, limite utilizado ou totais de relatórios.
 
-| Modelo / IndexedDB | PostgreSQL | Referências no mesmo usuário |
-| --- | --- | --- |
-| accounts | ms_accounts | — |
-| categories | ms_categories | — |
-| cards | ms_cards | conta sugerida |
-| recurring | ms_recurring | conta, categoria, cartão opcional |
-| transactions | ms_transactions | conta, categoria, recorrência opcional |
-| transfers | ms_transfers | contas de origem e destino distintas |
-| adjustments | ms_adjustments | conta, categoria opcional |
-| purchases | ms_purchases | cartão, categoria |
-| invoices | ms_invoices | cartão; competência única por cartão |
-| installments | ms_installments | compra, fatura; número único por compra |
-| payments | ms_payments | fatura, conta pagadora; estorno datado preservado |
-| invoiceEntries | ms_invoice_entries | fatura, compra/categoria/lançamento original opcionais |
-| occurrences | ms_occurrences | recorrência, exatamente uma transação ou compra |
-| budgets | ms_budgets | categoria; categoria/mês únicos |
-| settings | ms_settings | uma configuração por usuário |
-| audit | ms_audit | proprietário; referência polimórfica histórica sem FK ao registro apagado |
+| Modelo / IndexedDB | PostgreSQL         | Referências no mesmo usuário                                              |
+| ------------------ | ------------------ | ------------------------------------------------------------------------- |
+| accounts           | ms_accounts        | —                                                                         |
+| categories         | ms_categories      | —                                                                         |
+| cards              | ms_cards           | conta sugerida                                                            |
+| recurring          | ms_recurring       | conta, categoria, cartão opcional                                         |
+| transactions       | ms_transactions    | conta, categoria, recorrência opcional                                    |
+| transfers          | ms_transfers       | contas de origem e destino distintas                                      |
+| adjustments        | ms_adjustments     | conta, categoria opcional                                                 |
+| purchases          | ms_purchases       | cartão, categoria                                                         |
+| invoices           | ms_invoices        | cartão; competência única por cartão                                      |
+| installments       | ms_installments    | compra, fatura; número único por compra                                   |
+| payments           | ms_payments        | fatura, conta pagadora; estorno datado preservado                         |
+| invoiceEntries     | ms_invoice_entries | fatura, compra/categoria/lançamento original opcionais                    |
+| occurrences        | ms_occurrences     | recorrência, exatamente uma transação ou compra                           |
+| budgets            | ms_budgets         | categoria; categoria/mês únicos                                           |
+| settings           | ms_settings        | uma configuração por usuário                                              |
+| audit              | ms_audit           | proprietário; referência polimórfica histórica sem FK ao registro apagado |
 
 Referências compostas `(user_id, referência)` impedem vínculos entre usuários. Não há cascade sobre histórico financeiro. `invoiceEntries.transferId` identifica um par de aplicação de crédito; não referencia uma transferência bancária. `audit.before/after` são snapshots históricos JSON, sem renomeação interna dos campos. A propriedade de suas linhas é protegida por RLS; seus conteúdos serão validados pelo importador transacional futuro. Unicidades adicionais preservam ocorrências efetivadas uma vez e orçamentos únicos. Relações sem FK histórica, direção de categorias, compatibilidade entre compra/fatura, soma das parcelas, excesso de estorno/pagamento e pares de crédito exigem validação agregada na futura operação transacional. Não são consideradas garantidas somente pelo DDL.
 

@@ -13,7 +13,7 @@ const expiredMessage = 'Sua sessão expirou. Entre novamente. Os dados locais co
 export function observeRemoteSession(
   auth: AuthPort,
   publish: (state: RemoteIdentity) => void,
-  onRecovery: () => void,
+  onRecovery: (user: User) => void,
 ) {
   let stopped = false,
     revision = 0,
@@ -111,7 +111,7 @@ export function observeRemoteSession(
   } = auth.onAuthStateChange((event, session) => {
     if (stopped) return
     acceptSession(session)
-    if (event === 'PASSWORD_RECOVERY' && session) onRecovery()
+    if (event === 'PASSWORD_RECOVERY' && session) onRecovery(session.user)
   })
   verify()
   return {

@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { format, isValid, parseISO } from 'date-fns'
 import type { CivilDate, MovementInput, CategoryInput } from './models'
-export const today = () => format(new Date(), 'yyyy-MM-dd') as CivilDate
+import { civilToday } from './civil-clock'
+export const today = () => civilToday()
 export const civilDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)

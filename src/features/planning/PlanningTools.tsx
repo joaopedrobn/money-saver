@@ -5,7 +5,7 @@ import type { CivilDate, RecurringTransaction } from '@/domain/models'
 import { budgetUsage, financialForecast, pendingOccurrences } from '@/domain/planning'
 import { today } from '@/domain/financial-validation'
 import { formatMoneyInput, parseBRL } from '@/domain/money'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -19,6 +19,7 @@ function RecurringForm({
   recurring?: RecurringTransaction
   done: () => void
 }) {
+  const repositories = useRepositories()
   const [direction, setDirection] = useState(recurring?.direction ?? 'expense')
   const [frequency, setFrequency] = useState(recurring?.frequency ?? 'monthly')
   const [busy, setBusy] = useState(false),
@@ -201,6 +202,7 @@ export function PlanningTools({
   money: (cents: number) => string
   notify: (message: string) => void
 }) {
+  const repositories = useRepositories()
   const period = format(month, 'yyyy-MM')
   const [form, setForm] = useState<{ recurring?: RecurringTransaction } | null>(null)
   const [realizing, setRealizing] = useState<ReturnType<typeof pendingOccurrences>[number] | null>(

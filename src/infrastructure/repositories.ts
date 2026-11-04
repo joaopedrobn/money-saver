@@ -169,22 +169,26 @@ const read = <T extends Entity>(table: {
   get(id: string): Promise<T | undefined>
 }): ReadRepository<T> => ({ list: () => table.toArray(), get: (id) => table.get(id) })
 export const activePersistenceBackend = selectPersistenceBackend()
-export const repositories: FinancialRepositories = {
-  planning: new DexiePlanningRepository(db),
-  accounts: new DexieAccountRepository(db),
-  cards: read<CreditCard>(db.cards),
-  transactions: read<Transaction>(db.transactions),
-  purchases: read<CreditCardPurchase>(db.purchases),
-  installments: read<Installment>(db.installments),
-  invoices: read<CreditCardInvoice>(db.invoices),
-  payments: read<InvoicePayment>(db.payments),
-  recurring: read<RecurringTransaction>(db.recurring),
-  categories: new DexieCategoryRepository(db),
-  transfers: read<Transfer>(db.transfers),
-  adjustments: read<BalanceAdjustment>(db.adjustments),
-  settings: new DexieSettingsRepository(db),
-  movements: new DexieMovementRepository(db),
-  snapshot: () => readSnapshot(db),
-  backup: new DexieBackupRepository(db),
-  credit: new DexieCreditRepository(db),
+export function createLocalRepositories(database: FinancialDatabase): FinancialRepositories {
+  const db = database
+  return {
+    planning: new DexiePlanningRepository(db),
+    accounts: new DexieAccountRepository(db),
+    cards: read<CreditCard>(db.cards),
+    transactions: read<Transaction>(db.transactions),
+    purchases: read<CreditCardPurchase>(db.purchases),
+    installments: read<Installment>(db.installments),
+    invoices: read<CreditCardInvoice>(db.invoices),
+    payments: read<InvoicePayment>(db.payments),
+    recurring: read<RecurringTransaction>(db.recurring),
+    categories: new DexieCategoryRepository(db),
+    transfers: read<Transfer>(db.transfers),
+    adjustments: read<BalanceAdjustment>(db.adjustments),
+    settings: new DexieSettingsRepository(db),
+    movements: new DexieMovementRepository(db),
+    snapshot: () => readSnapshot(db),
+    backup: new DexieBackupRepository(db),
+    credit: new DexieCreditRepository(db),
+  }
 }
+export const repositories = createLocalRepositories(db)

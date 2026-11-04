@@ -4,7 +4,7 @@ import type { FinanceData } from '@/hooks/use-finances'
 import type { CivilDate, Movement } from '@/domain/models'
 import { compareMovements, filterMovements, type MovementFilter } from '@/domain/finance'
 import { today } from '@/domain/financial-validation'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -28,6 +28,7 @@ export function MovementsPage({
   defaultAccountId?: string
   period?: { from: string; to: string }
 }) {
+  const repositories = useRepositories()
   const [filter, setFilter] = useState<MovementFilter>({ accountId: defaultAccountId, ...period }),
     [form, setForm] = useState<{ movement?: Movement } | null>(null),
     [deleting, setDeleting] = useState<Movement | null>(null),

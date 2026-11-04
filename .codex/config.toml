@@ -1,0 +1,5 @@
+# Project-only UI tooling; existing user MCP servers remain unchanged.
+[mcp_servers.shadcn]
+command = "cmd"
+args = ["/c", "npx", "--yes", "shadcn@4.23.0", "mcp"]
+startup_timeout_sec = 60

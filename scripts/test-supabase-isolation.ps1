@@ -1,7 +1,9 @@
 param(
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^[a-z]{20}$')]
-  [string]$TestProjectRef
+  [string]$TestProjectRef,
+  [ValidateSet('Isolation','Sync')]
+  [string]$Suite = 'Isolation'
 )
 $ErrorActionPreference = 'Stop'
 if ($TestProjectRef -eq 'iwzmsbkbuerleocismhj') { throw 'Production target is forbidden.' }
@@ -18,7 +20,7 @@ if ($testConnection.Query -or $testConnection.Fragment) { throw 'Use a URL witho
 if ($testUserInfo.Count -ne 2 -or -not $testUserInfo[1]) { throw 'Database credentials must be provided securely in the environment.' }
 $testPsql = Get-Command psql -CommandType Application -ErrorAction SilentlyContinue
 if (-not $testPsql) { throw 'psql is required for the disposable test environment; it will not be installed automatically.' }
-$testSqlPath = Join-Path $PSScriptRoot '..\supabase\tests\isolation.sql'
+$testSqlPath = if ($Suite -eq 'Sync') { Join-Path $PSScriptRoot '..\supabase\tests\sync.sql' } else { Join-Path $PSScriptRoot '..\supabase\tests\isolation.sql' }
 $testNames = @('PGHOST','PGPORT','PGUSER','PGPASSWORD','PGDATABASE','PGSSLMODE','PGCONNECT_TIMEOUT','PGOPTIONS','PGSERVICE','PGSERVICEFILE','PGPASSFILE')
 $testPrevious = @{}
 foreach ($testName in $testNames) { $testPrevious[$testName] = [Environment]::GetEnvironmentVariable($testName, 'Process') }

@@ -1,42 +1,146 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import type { User } from '@supabase/supabase-js'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { UserRound, HardDrive } from 'lucide-react'
 import { getAuthClient, remoteAuthConfig } from '@/infrastructure/supabase/client'
 import { remoteAuth } from '@/infrastructure/supabase/auth'
 import { Button } from '@/components/ui/button'
+import { LocalFinanceProvider } from '@/infrastructure/financial-workspace'
+import { financialDatabaseName } from '@/infrastructure/financial-context'
 import { observeRemoteSession, type RemoteIdentity } from '@/infrastructure/supabase/session'
+import { AuthPages, AuthLink, AuthLayout } from './AuthPages'
+import {
+  authCallback,
+  entryDestination,
+  localModeKey,
+  readPreference,
+  readRecovery,
+  recoveryKey,
+  routeFromUrl,
+  saveProgress,
+  validRecovery,
+  writePreference,
+  type AuthRoute,
+  type RecoveryGrant,
+} from './access-state'
+import './auth.css'
 
-/** Only #online is protected. Financial routes and IndexedDB are always local and accessible. */
+const AccountContext = createContext<ReactNode>(null)
+export function UserAccountMenu() {
+  return useContext(AccountContext)
+}
+
+/** Verified sessions enter directly; anonymous and account-local datasets stay separate. */
 export function RemoteAccess({ children }: { children: ReactNode }) {
-  const [online, setOnline] = useState(() => window.location.hash === '#online')
-  const [identity, setIdentity] = useState<RemoteIdentity>({
-    user: null,
-    loading: true,
-    error: '',
+  const [callback] = useState(() => authCallback(window.location.href))
+  const [callbackError, setCallbackError] = useState(callback.error)
+  const [callbackPending, setCallbackPending] = useState(callback.present && !callback.error)
+  const [route, setRoute] = useState(() => routeFromUrl(window.location.href))
+  const [local, setLocal] = useState(() => {
+    const url = new URL(window.location.href)
+    return (
+      url.pathname === '/' &&
+      url.hash !== '#online' &&
+      !callback.present &&
+      readPreference(localModeKey) === 'true'
+    )
   })
-  const [recovery, setRecovery] = useState(false)
+  const [identity, setIdentity] = useState<RemoteIdentity>({ user: null, loading: true, error: '' })
+  const [recovery, setRecovery] = useState<RecoveryGrant | null>(readRecovery)
+  const [busy, setBusy] = useState(false)
+  const leaving = useRef(false)
+  const [actionError, setActionError] = useState('')
+  const [notice, setNotice] = useState('')
   const retrySession = useRef<(() => void) | null>(null)
   const config = remoteAuthConfig()
+
   useEffect(() => {
-    const changed = () => setOnline(window.location.hash === '#online')
-    window.addEventListener('hashchange', changed)
-    return () => window.removeEventListener('hashchange', changed)
+    // A direct login/callback must not revive an older anonymous choice on the next hash change.
+    if (!local) writePreference(localModeKey, null)
+  }, [local])
+
+  const navigate = useCallback((next: AuthRoute, replace = false) => {
+    writePreference(localModeKey, null)
+    setLocal(false)
+    setCallbackError('')
+    setCallbackPending(false)
+    setActionError('')
+    window.history[replace ? 'replaceState' : 'pushState'](null, '', next)
+    setRoute(next)
   }, [])
+
+  const continueLocally = useCallback(() => {
+    writePreference(localModeKey, 'true')
+    writePreference(recoveryKey, null)
+    setRecovery(null)
+    setLocal(true)
+    setCallbackError('')
+    setCallbackPending(false)
+    window.history.pushState(null, '', '/#dashboard')
+    setRoute('/login')
+  }, [])
+
+  useEffect(() => {
+    const changed = () => {
+      const url = new URL(window.location.href)
+      if (url.hash === '#online') {
+        navigate('/login')
+        return
+      }
+      setRoute(routeFromUrl(url.href))
+      setLocal(url.pathname === '/' && readPreference(localModeKey) === 'true')
+      setCallbackError('')
+      setCallbackPending(false)
+    }
+    window.addEventListener('popstate', changed)
+    window.addEventListener('hashchange', changed)
+    return () => {
+      window.removeEventListener('popstate', changed)
+      window.removeEventListener('hashchange', changed)
+    }
+  }, [navigate])
+
   useEffect(() => {
     let mounted = true
+    let hadVerifiedUser = false
     let observer: ReturnType<typeof observeRemoteSession> | undefined
     void getAuthClient()
       .then((client) => {
-        if (!client || !mounted) return
+        if (!mounted) return
+        if (!client) {
+          setIdentity({ user: null, loading: false, error: '' })
+          return
+        }
         observer = observeRemoteSession(
           client.auth,
           (state) => {
             if (!mounted) return
             setIdentity(state)
-            if (!state.user && !state.loading) setRecovery(false)
+            if (state.user) hadVerifiedUser = true
+            if (!state.user && !state.loading) {
+              if (hadVerifiedUser) {
+                setRoute('/login')
+                setNotice(
+                  state.error ? '' : 'Sua sessão foi encerrada. Entre novamente para continuar.',
+                )
+                hadVerifiedUser = false
+              }
+              setRecovery(null)
+              writePreference(recoveryKey, null)
+            }
           },
-          () => {
-            setRecovery(true)
-            window.location.hash = 'online'
+          (user) => {
+            if (!mounted) return
+            const grant = { userId: user.id, until: Date.now() + 15 * 60_000 }
+            writePreference(recoveryKey, JSON.stringify(grant))
+            setRecovery(grant)
+            navigate('/redefinir-senha', true)
           },
         )
         retrySession.current = observer.retry
@@ -46,7 +150,7 @@ export function RemoteAccess({ children }: { children: ReactNode }) {
           setIdentity({
             user: null,
             loading: false,
-            error: 'Falha ao iniciar Auth. Recarregue ou continue no modo local.',
+            error: 'Não foi possível iniciar a conexão. Tente novamente ou continue sem conta.',
           })
       })
     return () => {
@@ -54,233 +158,212 @@ export function RemoteAccess({ children }: { children: ReactNode }) {
       retrySession.current = null
       observer?.stop()
     }
-  }, [])
-  if (!online) return children
-  return (
-    <main className="content" style={{ maxWidth: 640, margin: '0 auto' }}>
-      <section className="panel settings-panel">
-        <h1>Conta online</h1>
+  }, [navigate])
+
+  useEffect(() => {
+    if (!recovery) return
+    const timer = window.setTimeout(
+      () => {
+        setRecovery(null)
+        writePreference(recoveryKey, null)
+      },
+      Math.max(0, recovery.until - Date.now()),
+    )
+    return () => window.clearTimeout(timer)
+  }, [recovery])
+
+  const canReset = validRecovery(recovery, identity.user?.id)
+  const effectiveRoute = entryDestination({
+    route,
+    local,
+    userId: identity.user?.id,
+    loading: identity.loading,
+    canReset,
+  })
+  useEffect(() => {
+    if (identity.loading && !local) return
+    // Wait for the SDK to consume external codes before canonicalizing the URL.
+    const url = new URL(window.location.href)
+    if (url.pathname !== effectiveRoute || url.hash === '#online')
+      window.history.replaceState(null, '', effectiveRoute)
+  }, [local, identity.loading, effectiveRoute])
+
+  async function leave(switchAccount: boolean) {
+    if (leaving.current) return
+    leaving.current = true
+    setBusy(true)
+    setActionError('')
+    try {
+      await remoteAuth.signOut()
+      setIdentity({ user: null, loading: false, error: '' })
+      setRecovery(null)
+      writePreference(recoveryKey, null)
+      saveProgress(null)
+      setNotice(
+        switchAccount
+          ? 'Você saiu. Entre com a outra conta para continuar.'
+          : 'Você saiu da conta. Seus dados neste navegador foram preservados.',
+      )
+      navigate('/login', true)
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'Não foi possível sair. Tente novamente.',
+      )
+    } finally {
+      leaving.current = false
+      setBusy(false)
+    }
+  }
+  const menu = (
+    <details className="user-account-menu">
+      <summary aria-label="Abrir menu de usuário">
+        {identity.user ? <UserRound size={18} /> : <HardDrive size={18} />}
+        <span>{identity.user ? 'Minha conta' : 'Modo local'}</span>
+      </summary>
+      <div className="user-account-popover">
+        <strong>
+          {identity.loading
+            ? 'Verificando sessão…'
+            : identity.user
+              ? 'Conta conectada'
+              : 'Sem conta conectada'}
+        </strong>
+        {identity.user && <p className="account-email">{identity.user.email}</p>}
         <p>
-          Autenticação separada do armazenamento financeiro. Seus dados continuam neste navegador;
-          entrar ou sair não os envia nem os apaga.
+          {local
+            ? 'Espaço sem conta: dados compartilhados por quem usa este perfil de navegador, sem vínculo com a conta conectada.'
+            : 'Dados salvos somente neste navegador, em um espaço local separado por conta. Nenhum dado financeiro foi enviado à nuvem.'}
         </p>
-        <p>
-          <a className="text-link" href="#settings">
-            Continuar no modo local
-          </a>
-        </p>
-        {!config.enabled ? (
-          <p role="status">
-            {config.error || 'Supabase não configurado. O modo local está disponível normalmente.'}
+        {actionError && <p role="alert">{actionError}</p>}
+        {identity.user && (
+          <p>
+            {identity.user.email_confirmed_at
+              ? 'E-mail confirmado'
+              : 'Confirmação de e-mail pendente'}
           </p>
-        ) : identity.loading ? (
-          <p role="status">Verificando sessão…</p>
-        ) : (
+        )}
+        {identity.error && <p role="alert">{identity.error}</p>}
+        {!identity.user && (
+          <Button variant="outline" onClick={() => navigate('/login')}>
+            Entrar ou criar conta
+          </Button>
+        )}
+        {local && identity.user && (
+          <Button variant="outline" onClick={() => navigate('/')}>
+            Abrir meu espaço local separado
+          </Button>
+        )}
+        {identity.user && (
           <>
-            {identity.error && (
-              <p role="alert" className="error-banner">
-                {identity.error}
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    retrySession.current ? retrySession.current() : window.location.reload()
-                  }
-                >
-                  Verificar sessão novamente
-                </Button>
-              </p>
-            )}
-            {identity.user ? (
-              <AuthenticatedAccount
-                key={identity.user.id}
-                user={identity.user}
-                recovery={recovery}
-                onUpdated={() => setRecovery(false)}
-              />
-            ) : (
-              <AuthForm />
-            )}
+            <Button variant="outline" disabled={busy} onClick={() => void leave(false)}>
+              Sair da conta
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={() => void leave(true)}>
+              Trocar de conta
+            </Button>
           </>
         )}
-      </section>
-    </main>
-  )
-}
-
-function AuthForm() {
-  const [mode, setMode] = useState<'login' | 'signup' | 'recover'>('login')
-  const [email, setEmail] = useState(''),
-    [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [message, setMessage] = useState('')
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError('')
-    setMessage('')
-    try {
-      if (mode === 'login') await remoteAuth.signIn(email, password)
-      else if (mode === 'signup') {
-        await remoteAuth.signUp(email, password)
-        setMessage(
-          'Se o cadastro puder ser concluído, você receberá instruções por e-mail. Confira sua caixa de entrada.',
-        )
-      } else {
-        await remoteAuth.recover(email)
-        setMessage('Se houver uma conta para este e-mail, você receberá um link de recuperação.')
-      }
-      setPassword('')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível concluir a autenticação.')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <>
-      <div className="dialog-actions">
-        {(['login', 'signup', 'recover'] as const).map((value) => (
-          <Button
-            key={value}
-            variant={mode === value ? 'default' : 'outline'}
-            disabled={busy}
-            onClick={() => {
-              setMode(value)
-              setPassword('')
-              setError('')
-              setMessage('')
-            }}
-          >
-            {value === 'login' ? 'Entrar' : value === 'signup' ? 'Cadastrar' : 'Recuperar senha'}
+        {!local && identity.user && (
+          <Button variant="ghost" onClick={continueLocally}>
+            Usar espaço sem conta
           </Button>
-        ))}
+        )}
       </div>
-      <form className="account-form" onSubmit={submit}>
-        <label>
-          E-mail
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            maxLength={254}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        {mode !== 'recover' && (
-          <label>
-            Senha
-            <input
-              type="password"
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              required
-              minLength={mode === 'signup' ? 12 : 1}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-        )}
-        {error && (
-          <p className="error-banner" role="alert">
-            {error}
-          </p>
-        )}
-        {message && <p role="status">{message}</p>}
-        <Button disabled={busy} type="submit">
-          {busy
-            ? 'Aguarde…'
-            : mode === 'login'
-              ? 'Entrar'
-              : mode === 'signup'
-                ? 'Criar conta'
-                : 'Enviar recuperação'}
-        </Button>
-      </form>
-    </>
+    </details>
   )
-}
-
-function AuthenticatedAccount({
-  user,
-  recovery,
-  onUpdated,
-}: {
-  user: User
-  recovery: boolean
-  onUpdated: () => void
-}) {
-  const [password, setPassword] = useState(''),
-    [confirmation, setConfirmation] = useState('')
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [message, setMessage] = useState('')
-  async function action(update: boolean) {
-    setBusy(true)
-    setError('')
-    setMessage('')
-    try {
-      if (update) {
-        if (password !== confirmation) throw new Error('As senhas devem ser iguais.')
-        await remoteAuth.updatePassword(password)
-        setPassword('')
-        setConfirmation('')
-        setMessage('Senha atualizada.')
-        onUpdated()
-      } else await remoteAuth.signOut()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível concluir a operação.')
-    } finally {
-      setBusy(false)
-    }
+  if (effectiveRoute === '/' && (local || (!identity.loading && identity.user && config.enabled))) {
+    const scope =
+      !local && identity.user && config.enabled
+        ? { projectUrl: config.url, userId: identity.user.id }
+        : null
+    return (
+      <AccountContext.Provider value={menu}>
+        <LocalFinanceProvider key={financialDatabaseName(scope)} scope={scope}>
+          {children}
+        </LocalFinanceProvider>
+      </AccountContext.Provider>
+    )
   }
+
+  const linkError = callbackError
+  const callbackNotice =
+    callbackPending && !identity.loading && !identity.user && !identity.error && !linkError
+      ? 'Não foi possível entrar automaticamente. Use seu e-mail e senha para continuar, ou solicite um novo link se necessário.'
+      : ''
+  const disabled = !config.enabled || identity.loading
   return (
-    <>
-      <h2>{recovery ? 'Definir nova senha' : 'Sessão autenticada'}</h2>
-      <p>{user.email}</p>
-      <p>A sincronização financeira ainda não está disponível.</p>
-      <form
-        className="account-form"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void action(true)
-        }}
-      >
-        <label>
-          Nova senha
-          <input
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={12}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        <label>
-          Confirmar nova senha
-          <input
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={12}
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-          />
-        </label>
-        <Button disabled={busy} type="submit">
-          Atualizar senha
-        </Button>
-      </form>
-      {error && (
-        <p role="alert" className="error-banner">
-          {error}
+    <AuthLayout route={effectiveRoute} navigate={navigate}>
+      {!config.enabled && (
+        <p className="auth-feedback is-error" role="alert">
+          A entrada com conta está indisponível no momento. Você pode continuar sem conta.
         </p>
       )}
-      {message && <p role="status">{message}</p>}
-      <Button variant="outline" disabled={busy} onClick={() => void action(false)}>
-        Sair da conta online
-      </Button>
-    </>
+      {identity.error && (
+        <div className="auth-feedback is-error" role="alert">
+          <p>{identity.error}</p>
+          <button
+            className="auth-inline-link"
+            onClick={() =>
+              retrySession.current ? retrySession.current() : window.location.reload()
+            }
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+      {linkError && (
+        <div className="auth-feedback is-error" role="alert">
+          <p>{linkError}</p>
+          <div className="auth-recovery-links">
+            <AuthLink to="/verificar-email" navigate={navigate}>
+              Novo link de confirmação
+            </AuthLink>
+            <AuthLink to="/recuperar-senha" navigate={navigate}>
+              Recuperar senha
+            </AuthLink>
+          </div>
+        </div>
+      )}
+      {callbackNotice && (
+        <p className="auth-feedback" role="status">
+          {callbackNotice}
+        </p>
+      )}
+      {actionError && (
+        <p className="auth-feedback is-error" role="alert">
+          {actionError}
+        </p>
+      )}
+      {notice && effectiveRoute === '/login' && (
+        <p role="status" className="auth-feedback">
+          {notice}
+        </p>
+      )}
+      <AuthPages
+        key={effectiveRoute}
+        route={effectiveRoute === '/conta' ? '/login' : effectiveRoute}
+        navigate={navigate}
+        disabled={disabled}
+        canReset={canReset}
+        onPasswordUpdated={() => {
+          // Keep the success screen visible even when recovery resumed from another route.
+          setRoute('/redefinir-senha')
+          setRecovery(null)
+          writePreference(recoveryKey, null)
+          saveProgress(null)
+        }}
+      />
+      <div className="auth-local-access">
+        <button onClick={continueLocally} disabled={canReset}>
+          {identity.user ? 'Abrir espaço local' : 'Continuar sem conta'}
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+      {identity.loading && (
+        <p className="auth-checking" role="status">
+          Verificando sessão…
+        </p>
+      )}
+    </AuthLayout>
   )
 }

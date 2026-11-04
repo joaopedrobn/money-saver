@@ -13,7 +13,7 @@ import type {
 import { cardSchema, paymentSchema, purchaseSchema } from '@/domain/credit-validation'
 import { centsSchema, civilDateSchema, today } from '@/domain/financial-validation'
 import { installmentPlan, invoiceSummary, planFingerprint } from '@/domain/credit'
-import { assertCreditIntegrity } from '@/domain/credit-integrity'
+import { assertCreditIntegrity, purchaseHasHistory } from '@/domain/credit-integrity'
 import { sumCents } from '@/domain/money'
 import { readSnapshot } from './movement-repository'
 import type { FinancialDatabase } from './database'
@@ -93,10 +93,13 @@ export class DexieCreditRepository implements CreditRepository {
   }
   private async protectedPurchase(id: string) {
     const parts = await this.d.installments.where('purchaseId').equals(id).toArray()
-    const invoices = new Set(parts.map((p) => p.invoiceId))
-    return (
-      (await this.d.payments.toArray()).some((p) => invoices.has(p.invoiceId)) ||
-      (await this.d.invoiceEntries.where('purchaseId').equals(id).count()) > 0
+    return purchaseHasHistory(
+      {
+        installments: parts,
+        payments: await this.d.payments.toArray(),
+        invoiceEntries: await this.d.invoiceEntries.where('purchaseId').equals(id).toArray(),
+      },
+      id,
     )
   }
   private async savePurchase(input: PurchaseInput, id?: string, expectedPlan?: string) {

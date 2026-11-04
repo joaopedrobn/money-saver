@@ -7,7 +7,7 @@ import { filterMovements, movementKey, statement, type MovementFilter } from '@/
 import { accountBalance, sumCents } from '@/domain/money'
 import { today } from '@/domain/financial-validation'
 import type { FinanceData } from '@/hooks/use-finances'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -34,6 +34,7 @@ export function AccountStatement({
   onBack: () => void
   notify: (message: string) => void
 }) {
+  const repositories = useRepositories()
   const [month, setMonth] = useState(new Date()),
     [filter, setFilter] = useState<MovementFilter>(() => monthFilter(new Date())),
     [form, setForm] = useState<{ movement?: Movement } | null>(null),

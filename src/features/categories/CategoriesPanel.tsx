@@ -22,7 +22,7 @@ import {
 import type { Category } from '@/domain/models'
 import type { z } from 'zod'
 import { categorySchema } from '@/domain/financial-validation'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -41,6 +41,7 @@ const icons: Record<string, { label: string; icon: LucideIcon }> = {
   tag: { label: 'Etiqueta', icon: Tag },
 }
 function CategoryForm({ category, onDone }: { category?: Category; onDone: () => void }) {
+  const repositories = useRepositories()
   const [error, setError] = useState('')
   const {
     register,
@@ -134,6 +135,7 @@ export function CategoriesPanel({
   categories: Category[]
   notify: (message: string) => void
 }) {
+  const repositories = useRepositories()
   const [form, setForm] = useState<{ category?: Category } | null>(null),
     [archiving, setArchiving] = useState<Category | null>(null),
     [showArchived, setShowArchived] = useState(false)

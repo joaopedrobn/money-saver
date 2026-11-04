@@ -25,7 +25,18 @@ export function authConfig(env: Record<string, unknown>, appUrl: string): AuthCo
       throw new Error()
     if (
       redirect.origin !== app.origin ||
-      redirect.pathname !== app.pathname ||
+      (redirect.pathname !== app.pathname &&
+        !(
+          redirect.pathname === '/' &&
+          [
+            '/login',
+            '/cadastro',
+            '/verificar-email',
+            '/recuperar-senha',
+            '/redefinir-senha',
+            '/conta',
+          ].includes(app.pathname)
+        )) ||
       redirect.search ||
       redirect.hash ||
       redirect.username ||

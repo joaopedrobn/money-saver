@@ -18,7 +18,7 @@ import { cardSummary, purchaseActive } from '@/domain/credit'
 import { limitHistory, purchaseProgress, refundableAmount } from '@/domain/credit-views'
 import { today } from '@/domain/financial-validation'
 import { sumCents } from '@/domain/money'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -38,6 +38,7 @@ export function CardsPage({
   money: (cents: number) => string
   notify: (message: string) => void
 }) {
+  const repositories = useRepositories()
   const [selectedId, setSelectedId] = useState<string | null>(null),
     [invoiceId, setInvoiceId] = useState<string | null>(null),
     [tab, setTab] = useState('invoices'),

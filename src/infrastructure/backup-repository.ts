@@ -2,6 +2,7 @@ import type { BackupRepository } from '@/domain/repositories'
 import { validateBackup, type Backup } from '@/domain/backup'
 import { defaultCategories } from '@/domain/default-categories'
 import type { FinancialDatabase } from './database'
+import { remoteFields } from './supabase/mapping'
 export class DexieBackupRepository implements BackupRepository {
   constructor(private readonly d: FinancialDatabase) {}
   async export(): Promise<Backup> {
@@ -18,7 +19,10 @@ export class DexieBackupRepository implements BackupRepository {
         exportedAt: new Date().toISOString(),
         data: Object.fromEntries(
           await Promise.all(
-            this.d.tables.map(async (table) => [table.name, await table.toArray()]),
+            Object.keys(remoteFields).map(async (name) => [
+              name,
+              await this.d.table(name).toArray(),
+            ]),
           ),
         ),
       }),
@@ -28,11 +32,16 @@ export class DexieBackupRepository implements BackupRepository {
     return validateBackup(value)
   }
   async restore(value: unknown, confirmation: string): Promise<void> {
+    if (this.d.tables.some((table) => table.name === 'outbox'))
+      throw new Error(
+        'Restauração do espaço sincronizado exige um fluxo de recuperação próprio. Preserve o backup e a fila.',
+      )
     if (confirmation !== 'RESTAURAR')
       throw new Error('Confirme a substituição dos dados digitando RESTAURAR.')
     const backup = validateBackup(value)
     await this.d.transaction('rw', this.d.tables, async () => {
-      for (const table of this.d.tables) {
+      for (const name of Object.keys(remoteFields)) {
+        const table = this.d.table(name)
         await table.clear()
         await table.bulkAdd(backup.data[table.name as keyof Backup['data']])
       }

@@ -1,0 +1,62 @@
+.sync-controls,
+.sync-controls fieldset {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sync-controls .form-actions,
+.sync-lab .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block: 18px;
+}
+.sync-controls fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-block: 20px;
+}
+.sync-controls legend {
+  font-weight: 600;
+}
+.sync-controls label {
+  display: block;
+  margin-block: 16px 8px;
+}
+.sync-controls input:not([type='checkbox']) {
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 12px;
+  margin-block: 8px 16px;
+}
+.sync-controls input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.sync-controls input[type='checkbox'] {
+  margin-right: 8px;
+}
+.sync-controls details {
+  margin-block: 18px;
+}
+.sync-controls summary {
+  cursor: pointer;
+}
+.sync-controls ul {
+  padding-left: 22px;
+}
+.sync-controls li {
+  margin-block: 10px;
+}
+.sync-lab > nav {
+  margin-block: 18px;
+  line-height: 2;
+}
+.sync-lab > section,
+.sync-lab > div > section {
+  margin-block: 18px;
+}

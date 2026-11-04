@@ -17,6 +17,9 @@
     "prepreview": "node scripts/runtime.mjs --check",
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "build:worker": "node scripts/build-sync-worker.mjs",
+    "test:sync:local": "node scripts/test-sync-worker-local.mjs --workerd",
+    "lab:sync": "node scripts/test-sync-worker-local.mjs --workerd --ui",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
@@ -42,7 +45,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "prettier": "^3.9.10",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.1.17",
     "@types/node": "^22.19.0",
@@ -54,6 +56,8 @@
     "eslint-plugin-react-refresh": "^0.5.7",
     "fake-indexeddb": "^6.2.4",
     "globals": "^16.5.0",
+    "prettier": "^3.9.10",
+    "shadcn": "^4.23.0",
     "tailwindcss": "^4.1.17",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.72.1",

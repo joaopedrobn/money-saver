@@ -1,4 +1,4 @@
-import { Component, useEffect, useState, type ReactNode } from 'react'
+import { Component, useContext, useEffect, useState, type ReactNode } from 'react'
 import {
   LayoutDashboard,
   Landmark,
@@ -30,7 +30,7 @@ import { accountTypes } from '@/features/accounts/constants'
 import { useFinances } from '@/hooks/use-finances'
 import { formatMoney } from '@/domain/money'
 import type { BankAccount } from '@/domain/models'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { MovementsPage } from '@/features/movements/MovementsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -39,7 +39,11 @@ import { NewMovementForm as MovementForm } from '@/features/movements/NewMovemen
 import { CardsPage } from '@/features/cards/CardsPage'
 import { PlanningPage } from '@/features/planning/PlanningPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
-import { RemoteAccess } from '@/features/auth/RemoteAccess'
+import { RemoteAccess, UserAccountMenu } from '@/features/auth/RemoteAccess'
+import { ApplicationFinanceProvider } from '@/infrastructure/sync/ApplicationFinanceProvider'
+import type { ApplicationSyncWorkspace } from '@/infrastructure/sync/application-workspace'
+import { SyncSettingsContext } from '@/features/settings/sync-settings-context'
+import { today } from '@/domain/financial-validation'
 
 const navigation = [
   { id: 'dashboard', label: 'Visão geral', icon: LayoutDashboard },
@@ -71,7 +75,18 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
     )
   }
 }
-export function App() {
+export function App({ testWorkspace }: { testWorkspace?: ApplicationSyncWorkspace }) {
+  if (testWorkspace) {
+    if (!import.meta.env.DEV || window.location.hostname !== '127.0.0.1')
+      return <main className="fatal">Modo de homologação indisponível neste ambiente.</main>
+    return (
+      <ErrorBoundary>
+        <ApplicationFinanceProvider workspace={testWorkspace}>
+          <Workspace />
+        </ApplicationFinanceProvider>
+      </ErrorBoundary>
+    )
+  }
   return (
     <ErrorBoundary>
       <RemoteAccess>
@@ -81,6 +96,8 @@ export function App() {
   )
 }
 function Workspace() {
+  const repositories = useRepositories()
+  const testSync = useContext(SyncSettingsContext)
   const [page, setPage] = useState<Page>(pageFromHash)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [hidden, setHidden] = useState(false)
@@ -89,9 +106,7 @@ function Workspace() {
   const [deletingBusy, setDeletingBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [month, setMonth] = useState(
-    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-  )
+  const [month, setMonth] = useState(() => new Date(`${today().slice(0, 7)}-01T12:00:00`))
   const [help, setHelp] = useState(false)
   const [quickMovement, setQuickMovement] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
@@ -164,19 +179,19 @@ function Workspace() {
             </span>
             <strong>Seu dinheiro. Seus dados.</strong>
             <p>
-              Salvos neste navegador.
+              {testSync ? 'Réplica de homologação.' : 'Salvos neste navegador.'}
               <br />
               Privados por natureza.
             </p>
             <span className="local-status">
-              <i /> Armazenamento local
+              <i /> {testSync ? 'Outbox e PostgreSQL locais' : 'Armazenamento local'}
             </span>
           </div>
           <button className="help-link" onClick={() => setHelp(true)}>
             <CircleHelp size={17} /> Como funciona <ArrowUpRight size={14} />
           </button>
           <div className="sidebar-footer">
-            <span className="avatar">EU</span>
+            <ShieldCheck size={22} aria-hidden="true" />
             <div>
               <strong>Meu espaço pessoal</strong>
               <small>Uma vida mais organizada</small>
@@ -201,7 +216,7 @@ function Workspace() {
           </div>
           <div className="topbar-right">
             <span className="private-tag">
-              <i /> Ambiente local
+              <i /> {testSync ? 'Homologação de sincronização' : 'Ambiente local'}
             </span>
             <span className="topbar-divider" />
             <button
@@ -212,7 +227,7 @@ function Workspace() {
             >
               {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
-            <span className="avatar small">EU</span>
+            <UserAccountMenu />
           </div>
         </header>
         <main id="main" tabIndex={-1} className="content">

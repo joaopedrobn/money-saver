@@ -5,7 +5,7 @@ import { z } from 'zod'
 import type { Movement, MovementStatus, CivilDate } from '@/domain/models'
 import { today } from '@/domain/financial-validation'
 import { formatMoneyInput, parseBRL } from '@/domain/money'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import type { FinanceData } from '@/hooks/use-finances'
 import { Button } from '@/components/ui/button'
 import { operationLabels, operationOf, statusLabels } from './constants'
@@ -50,6 +50,7 @@ export function MovementForm({
   defaultAccountId?: string
   planned?: boolean
 }) {
+  const repositories = useRepositories()
   const [error, setError] = useState('')
   const {
     register,

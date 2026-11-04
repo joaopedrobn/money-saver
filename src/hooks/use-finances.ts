@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { sumCents } from '@/domain/money'
 import { balancesAt, bankMovementsFrom } from '@/domain/finance'
 import { today } from '@/domain/financial-validation'
@@ -20,6 +20,7 @@ const empty: CreditSnapshot = {
   settings: [],
 }
 export function useFinances() {
+  const repositories = useRepositories()
   const [date, setDate] = useState(today)
   useEffect(() => {
     const timer = window.setInterval(() => setDate(today()), 30_000)
@@ -45,6 +46,6 @@ export function useFinances() {
         error: e instanceof Error ? e.message : 'O armazenamento local não está disponível.',
       }
     }
-  }, [date])
+  }, [date, repositories])
 }
 export type FinanceData = NonNullable<ReturnType<typeof useFinances>>

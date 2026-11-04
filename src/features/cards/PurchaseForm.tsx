@@ -7,7 +7,7 @@ import { formatMoney, formatMoneyInput, parseBRL } from '@/domain/money'
 import { today } from '@/domain/financial-validation'
 import { purchaseSchema } from '@/domain/credit-validation'
 import { cardSummary, installmentPlan, planFingerprint } from '@/domain/credit'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 export function PurchaseForm({
   data,
@@ -20,6 +20,7 @@ export function PurchaseForm({
   cardId?: string
   onDone: (message: string) => void
 }) {
+  const repositories = useRepositories()
   const [error, setError] = useState(''),
     [preview, setPreview] = useState<{
       input: PurchaseInput

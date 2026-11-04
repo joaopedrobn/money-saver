@@ -6,7 +6,7 @@ import { formatMoney, formatMoneyInput, parseBRL } from '@/domain/money'
 import { today } from '@/domain/financial-validation'
 import { invoiceSummary } from '@/domain/credit'
 import { paymentSchema } from '@/domain/credit-validation'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 export function PaymentForm({
   data,
@@ -19,6 +19,7 @@ export function PaymentForm({
   payment?: InvoicePayment
   onDone: () => void
 }) {
+  const repositories = useRepositories()
   const card = data.cards.find((c) => c.id === invoice.cardId)!,
     summary = invoiceSummary(data, invoice, today())
   const [error, setError] = useState(''),

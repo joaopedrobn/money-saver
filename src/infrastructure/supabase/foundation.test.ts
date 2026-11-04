@@ -37,6 +37,16 @@ it('disables remote auth with absent or explicitly disabled configuration', () =
 })
 it('accepts only public publishable keys, safe endpoints and exact same-app callbacks', () => {
   expect(authConfig(valid, 'http://127.0.0.1:5173/#online').enabled).toBe(true)
+  for (const path of [
+    '/login',
+    '/cadastro',
+    '/verificar-email',
+    '/recuperar-senha',
+    '/redefinir-senha',
+    '/conta',
+  ])
+    expect(authConfig(valid, `http://127.0.0.1:5173${path}`).enabled).toBe(true)
+  expect(authConfig(valid, 'http://127.0.0.1:5173/unknown').enabled).toBe(false)
   expect(authConfig(valid, 'http://localhost:5173/#online').enabled).toBe(false)
   expect(
     authConfig(

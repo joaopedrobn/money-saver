@@ -1,15 +1,16 @@
+import type { FinancialRepositories } from '@/domain/repositories'
 import { useRef, useState } from 'react'
 import { Download, Upload, HardDrive } from 'lucide-react'
 import { z } from 'zod'
 import type { Backup } from '@/domain/backup'
 import { formatMoney } from '@/domain/money'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { balancesAt } from '@/domain/finance'
 import { sumCents } from '@/domain/money'
 import { today } from '@/domain/financial-validation'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
-async function downloadBackup() {
+async function downloadBackup(repositories: FinancialRepositories) {
   const data = await repositories.backup.export()
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob),
@@ -22,10 +23,13 @@ async function downloadBackup() {
 export function BackupPanel({
   notify,
   hidden = false,
+  allowRestore = true,
 }: {
   notify: (message: string) => void
   hidden?: boolean
+  allowRestore?: boolean
 }) {
+  const repositories = useRepositories()
   const input = useRef<HTMLInputElement>(null),
     [preview, setPreview] = useState<Backup | null>(null),
     [error, setError] = useState(''),
@@ -36,7 +40,7 @@ export function BackupPanel({
     setError('')
     setBusy(true)
     try {
-      await downloadBackup()
+      await downloadBackup(repositories)
       setExported(true)
       notify('Backup exportado. Guarde o arquivo em local seguro.')
     } catch (e) {
@@ -78,7 +82,11 @@ export function BackupPanel({
           <Download size={16} />
           Exportar backup JSON
         </Button>
-        <Button variant="outline" onClick={() => input.current?.click()} disabled={busy}>
+        <Button
+          variant="outline"
+          onClick={() => input.current?.click()}
+          disabled={busy || !allowRestore}
+        >
           <Upload size={16} />
           Importar backup
         </Button>
@@ -88,6 +96,7 @@ export function BackupPanel({
         className="sr-only"
         tabIndex={-1}
         type="file"
+        disabled={!allowRestore || busy}
         accept=".json,application/json"
         aria-label="Arquivo de backup"
         onChange={(e) => {
@@ -102,8 +111,9 @@ export function BackupPanel({
         </p>
       )}
       <p className="form-hint">
-        Até 10 MB. Formatos v1 e v2. A restauração substitui todos os dados locais; não há mesclagem
-        automática. Limpar os dados do navegador também remove seus cadastros.
+        {allowRestore
+          ? 'Até 10 MB. Formatos v1 e v2. A restauração substitui todos os dados locais; não há mesclagem automática. Limpar os dados do navegador também remove seus cadastros.'
+          : 'Exporte o backup normalmente. Restauração genérica bloqueada neste espaço sincronizado para preservar a outbox e o histórico.'}
       </p>
       <Dialog
         open={!!preview}

@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import type { SupabaseClient, AuthChangeEvent, Session, User } from '@supabase/supabase-js'
 import { observeRemoteSession, SESSION_CHECK_TIMEOUT_MS, type RemoteIdentity } from './session'
+import { entryDestination } from '@/features/auth/access-state'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -119,4 +120,27 @@ it('opens password recovery, reports verification errors, and cleans up timers a
   expect(h.states).toHaveLength(count)
   expect(h.unsubscribe).toHaveBeenCalledTimes(1)
   expect(vi.getTimerCount()).toBe(0)
+})
+
+it('waits for verification on restored/login sessions and gives recovery priority over the dashboard', async () => {
+  const h = harness()
+  await vi.advanceTimersByTimeAsync(0)
+  h.getUser.mockResolvedValue({ data: { user: user() }, error: null })
+  h.event('PASSWORD_RECOVERY', session())
+  const destination = () => {
+    const state = h.states.at(-1)!
+    return entryDestination({
+      route: '/',
+      local: false,
+      userId: state.user?.id,
+      loading: state.loading,
+      canReset: h.recovered.mock.calls.length > 0 && !!state.user,
+    })
+  }
+  expect(destination()).not.toBe('/')
+  await vi.advanceTimersByTimeAsync(0)
+  expect(destination()).toBe('/redefinir-senha')
+  h.event('SIGNED_OUT', null)
+  expect(destination()).toBe('/login')
+  h.controller.stop()
 })

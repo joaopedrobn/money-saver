@@ -2,6 +2,19 @@ import type { FinancialSnapshot } from './models'
 import { sumCents } from './money'
 import { cardSummary, invoiceSummary, nextPeriod, purchaseActive } from './credit'
 import { today } from './financial-validation'
+/** Shared transition guard; no balance/invoice calculation is duplicated at the sync boundary. */
+export function purchaseHasHistory(
+  s: Pick<FinancialSnapshot, 'installments' | 'payments' | 'invoiceEntries'>,
+  purchaseId: string,
+) {
+  const invoices = new Set(
+    (s.installments ?? []).filter((i) => i.purchaseId === purchaseId).map((i) => i.invoiceId),
+  )
+  return (
+    s.payments.some((p) => invoices.has(p.invoiceId)) ||
+    (s.invoiceEntries ?? []).some((e) => e.purchaseId === purchaseId)
+  )
+}
 export function assertCreditIntegrity(s: FinancialSnapshot) {
   const cards = s.cards ?? [],
     purchases = s.purchases ?? [],

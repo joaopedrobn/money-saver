@@ -17,7 +17,7 @@ export function PlanningPage({
   money: (cents: number) => string
   notify: (message: string) => void
 }) {
-  const [month, setMonth] = useState(new Date()),
+  const [month, setMonth] = useState(() => new Date(`${today().slice(0, 7)}-01T12:00:00`)),
     plan = creditPlanning(data, month, today(), data.total)
   return (
     <>

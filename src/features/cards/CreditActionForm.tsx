@@ -11,7 +11,7 @@ import type {
 import { formatMoney, formatMoneyInput, parseBRL } from '@/domain/money'
 import { invoiceSummary } from '@/domain/credit'
 import { today } from '@/domain/financial-validation'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 import { Button } from '@/components/ui/button'
 import { refundableAmount } from '@/domain/credit-views'
 export type CreditAction =
@@ -30,6 +30,7 @@ export function CreditActionForm({
   action: CreditAction
   onDone: () => void
 }) {
+  const repositories = useRepositories()
   const [error, setError] = useState('')
   const defaultAmount =
     action.kind === 'credit'

@@ -5,7 +5,7 @@ import type { CreditRegime } from '@/domain/models'
 import { cardSummary, creditPlanning, invoiceSummary, purchaseActive } from '@/domain/credit'
 import { sumCents } from '@/domain/money'
 import { today } from '@/domain/financial-validation'
-import { repositories } from '@/infrastructure/repositories'
+import { useRepositories } from '@/infrastructure/financial-context'
 export function CreditDashboardPanel({
   data,
   money,
@@ -15,6 +15,7 @@ export function CreditDashboardPanel({
   money: (cents: number) => string
   month: Date
 }) {
+  const repositories = useRepositories()
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     plan = creditPlanning(data, month, today(), data.total),
