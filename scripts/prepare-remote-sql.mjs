@@ -13,7 +13,9 @@ let b = normalize(await readFile(new URL('supabase/phase32b/prepare.sql', root),
 const hashes = [a, b].map((s) => createHash('sha256').update(s).digest('hex'))
 function once(text, from, to) {
   if (text.split(from).length !== 2) throw new Error('Candidate changed: review remote promotion')
-  return text.replace(from, to)
+  // A replacement string interprets $$, $&, $` and $' as JS substitution tokens.
+  // Return the SQL literally so PostgreSQL dollar quoting survives unchanged.
+  return text.replace(from, () => to)
 }
 a = a.replace(/^--.*\r?\n/gm, '').replace(/^\\ir .*\r?\n/gm, '')
 b = b.replace(/^--.*\r?\n/gm, '').replace(/^\\ir .*\r?\n/gm, '')
@@ -97,9 +99,17 @@ if (process.argv.includes('--check')) {
 if (process.argv.includes('--package')) {
   const dir = new URL('.local/remote-release/supabase/', root)
   await mkdir(new URL('migrations/', dir), { recursive: true })
-  await writeFile(new URL('config.toml', dir), 'project_id = "money-saver-remote-release"\n[db]\nmajor_version = 17\n[db.seed]\nenabled = false\n')
+  await writeFile(
+    new URL('config.toml', dir),
+    'project_id = "money-saver-remote-release"\n[db]\nmajor_version = 17\n[db.seed]\nenabled = false\n',
+  )
   for (const name of ['202611030001_financial_schema.sql', '202611030002_rls_and_snapshot.sql'])
-    await writeFile(new URL(`migrations/${name}`, dir), await readFile(new URL(`supabase/migrations/${name}`, root)))
+    await writeFile(
+      new URL(`migrations/${name}`, dir),
+      await readFile(new URL(`supabase/migrations/${name}`, root)),
+    )
   await writeFile(new URL('migrations/202611040001_controlled_financial_sync.sql', dir), output)
-  console.log('Isolated CLI package prepared in .local/remote-release; local lab migrations unchanged.')
+  console.log(
+    'Isolated CLI package prepared in .local/remote-release; local lab migrations unchanged.',
+  )
 }

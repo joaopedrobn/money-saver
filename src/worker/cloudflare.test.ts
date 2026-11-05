@@ -76,3 +76,40 @@ it('rejects admin or expired validator tokens and an unexpected Supabase target'
     ).toBe(503)
   expect(network).not.toHaveBeenCalled()
 })
+
+it('forwards the verified user JWT to the existing view RPC without using validator privileges', async () => {
+  const network = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(Response.json({ id: owner, email_confirmed_at: '2026-11-04T00:00:00Z' }))
+    .mockResolvedValueOnce(Response.json({ revision: 0, data: {} }))
+  vi.stubGlobal('fetch', network)
+  const response = await worker.fetch(
+    new Request(`${origin}/sync-api/view`, {
+      headers: { Authorization: 'Bearer unit-user-token', Origin: origin },
+    }),
+    env(),
+  )
+  expect(response.status).toBe(200)
+  expect(String(network.mock.calls[0][0])).toContain('/auth/v1/user')
+  expect(String(network.mock.calls[1][0])).toContain('/rest/v1/rpc/ms_sync_view')
+  for (const [, init] of network.mock.calls)
+    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer unit-user-token')
+})
+
+it('stops before RPCs when Supabase rejects the session or the e-mail is unconfirmed', async () => {
+  for (const authResponse of [
+    new Response(null, { status: 401 }),
+    Response.json({ id: owner, email_confirmed_at: null }),
+  ]) {
+    const network = vi.fn<typeof fetch>().mockResolvedValueOnce(authResponse)
+    vi.stubGlobal('fetch', network)
+    const response = await worker.fetch(
+      new Request(`${origin}/sync-api/view`, {
+        headers: { Authorization: 'Bearer unit-invalid-token' },
+      }),
+      env(),
+    )
+    expect(response.ok).toBe(false)
+    expect(network).toHaveBeenCalledTimes(1)
+  }
+})

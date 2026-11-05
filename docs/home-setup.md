@@ -34,6 +34,8 @@ Abra `http://127.0.0.1:5173/`; `http://localhost:5173/` também pode ser usado. 
 
 ## Acesso à nuvem
 
+Preparação final, validações e aprovações pendentes: [cloudflare-publication-preflight.md](cloudflare-publication-preflight.md). A primeira publicação estará com sincronização desativada e não precisará de secret financeiro; os dados permanecerão locais até uma liberação posterior.
+
 Endereço de publicação preparado: **https://money-saver.quem-votar-jp.workers.dev/**. O subdomínio da conta foi consultado; o Worker ainda não foi publicado nesta entrega. Consulte `remote-release-plan.md` para o estado e pendências. Não há endereço publicado confirmado neste momento.
 
 Depois da validação remota aprovada e concluída, habilite o frontend somente para os UUIDs autorizados usando `VITE_REMOTE_SYNC_ENABLED=true` e `VITE_SYNC_ALLOWED_USER_IDS=<UUID autorizado>`. Reinicie Vite. Esses flags não concedem acesso: Worker e banco verificam independentemente sua lista e sessão.

@@ -1,8 +1,14 @@
 # Preparação da infraestrutura remota
 
+**Publicação preparada:** consulte [cloudflare-publication-preflight.md](cloudflare-publication-preflight.md) para o destino confirmado, payload de Auth proposto, validador mínimo, validações locais atuais e ações exatas pendentes de aprovação. Nenhum deploy, alteração de Auth ou push foi executado.
+
+**Estado atual:** migração corrigida `202611040001`, hash especificamente autorizado `19b1508b5755e05d0c73b2f45c135d436600480b9aba7c0f51180ef057fb0889`, aplicada com sucesso em `iwzmsbkbuerleocismhj`. Verificações posteriores somente leitura aprovadas; sincronização desativada, allowlist vazia, nenhum dado financeiro alterado. [Relatório da aplicação](supabase-sync-application-2026-11-05.md). Publicação, secrets, testes financeiros remotos, ativação e push continuam pendentes. O conteúdo seguinte registra a preparação histórica anterior.
+
 04/11/2026. Node **26.7.0**. Nenhuma aplicação SQL remota, publicação, ativação, importação pessoal ou push foi executado.
 
 **Atualização de 05/11/2026:** login e vínculo concluídos; catálogo remoto consultado somente para leitura e dry-run aprovado, selecionando apenas a migração `202611040001`. Evidências e hash exato em [remote-preflight-2026-11-05.md](remote-preflight-2026-11-05.md). As pendências de acesso abaixo descrevem a tentativa anterior e foram superadas; nenhuma migração foi aplicada.
+
+**Correção posterior:** a aplicação foi interrompida por erro de delimitadores no SQL gerado. O gerador foi corrigido e a migração completa passou em PostgreSQL local 17.11, com controle desativado e allowlist vazia. O novo hash e os testes reais constam no início do relatório de pré-aplicação. O hash antigo está descartado e sua autorização não cobre a versão corrigida. Não houve acesso remoto nesta correção nem aplicação em produção.
 
 ## Estado da preparação inicial (04/11/2026)
 

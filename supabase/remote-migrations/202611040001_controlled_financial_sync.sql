@@ -36,11 +36,11 @@ grant select on ms_sync_private.allowed_users to money_saver_sync_executor,money
 create policy allowed_owner on ms_sync_private.allowed_users to money_saver_sync_executor,money_saver_sync_validator
   using(user_id=(select auth.uid()));
 create function ms_sync_private.access_allowed(p_user uuid) returns boolean
-language sql stable security invoker set search_path='' as $
+language sql stable security invoker set search_path='' as $$
   select p_user is not null and p_user=auth.uid()
     and exists(select 1 from ms_sync_private.environment where singleton and enabled and project_ref='iwzmsbkbuerleocismhj')
     and exists(select 1 from ms_sync_private.allowed_users where user_id=p_user);
-$;
+$$;
 revoke all on function ms_sync_private.access_allowed(uuid) from public,anon,authenticated,service_role;
 grant execute on function ms_sync_private.access_allowed(uuid) to money_saver_sync_executor,money_saver_sync_validator;
 

@@ -1,0 +1,4 @@
+{
+  "site_url": "https://money-saver.quem-votar-jp.workers.dev/",
+  "uri_allow_list": "http://127.0.0.1:5173/**,http://localhost:5173/**,https://money-saver.quem-votar-jp.workers.dev/"
+}
