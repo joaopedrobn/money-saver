@@ -15,11 +15,15 @@ export async function buildSyncWorker(
     envFile: false,
     configFile: false,
     logLevel: 'error',
-    resolve: { alias: { '@': join(root, 'src') } },
+    resolve: { alias: { '@': join(root, 'src') }, conditions: ['workerd', 'module', 'import'] },
     build: {
       target: 'es2022',
       outDir,
       emptyOutDir: false,
+      rollupOptions: {
+        external: (id) => id.startsWith('node:') || id.startsWith('cloudflare:'),
+        output: { inlineDynamicImports: true },
+      },
       lib: {
         entry: join(root, 'src/worker', entry),
         formats: ['es'],

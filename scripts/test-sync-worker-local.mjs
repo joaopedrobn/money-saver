@@ -44,6 +44,7 @@ let installed = false,
   workerProcess,
   labServer
 let workerOutput = ''
+let databaseValidatorUrl = ''
 const workerSecrets = join(evidence, '.dev.vars')
 function assert(value, message) {
   if (!value) throw new Error(message)
@@ -173,6 +174,16 @@ try {
     `begin;\n\\ir ${stage}/phase32a/prepare.sql\n\\ir ${stage}/phase32b/prepare.sql\ncommit;`,
   )
   installed = true
+  if (process.argv.includes('--database-validator')) {
+    const password = randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '')
+    const provision = readFileSync(
+      join(root, 'supabase/remote-operations/provision-worker-validator.sql'),
+      'utf8',
+    ).replace(":'worker_validator_password'", () => `'${password}'`)
+    await sql(provision)
+    databaseValidatorUrl = `postgresql://money_saver_worker_validator:${password}@127.0.0.1:54322/postgres`
+    report.validatorMode = 'dedicated-postgresql-approval-only'
+  }
   assert(
     (await sql(
       `select count(*) from (values ${entities.map((e) => `('public.ms_${e}')`).join(',')}) t(name) where has_table_privilege('authenticated',name,'INSERT,UPDATE,DELETE');`,
@@ -250,6 +261,7 @@ try {
     SUPABASE_URL: base,
     SUPABASE_PUBLIC_KEY: keys.ANON_KEY,
     SYNC_VALIDATOR_TOKEN: validatorToken,
+    ...(databaseValidatorUrl ? { SYNC_VALIDATOR_DATABASE_URL: databaseValidatorUrl } : {}),
   }
   server = httpServer(async (request, response) => {
     try {
@@ -288,13 +300,17 @@ try {
         name: 'money-saver-sync-lab',
         main: './bundle/index.js',
         compatibility_date: '2026-11-04',
+        compatibility_flags: ['nodejs_compat'],
         workers_dev: false,
         vars: { LAB_ONLY: 'true', SUPABASE_URL: base },
       }),
     )
     writeFileSync(
       workerSecrets,
-      `SUPABASE_PUBLIC_KEY=${keys.ANON_KEY}\nSYNC_VALIDATOR_TOKEN=${validatorToken}\n`,
+      `SUPABASE_PUBLIC_KEY=${keys.ANON_KEY}\n` +
+        (databaseValidatorUrl
+          ? `SYNC_VALIDATOR_DATABASE_URL=${databaseValidatorUrl}\n`
+          : `SYNC_VALIDATOR_TOKEN=${validatorToken}\n`),
     )
     const workerEnv = { ...env, WRANGLER_SEND_METRICS: 'false', CI: 'true' }
     for (const key of Object.keys(workerEnv))
@@ -1149,6 +1165,7 @@ try {
     report.runtimeLog = workerOutput
       .replaceAll(keys.ANON_KEY, '[local-key]')
       .replaceAll(validatorTokenForRedaction(), '[validator-token]')
+      .replaceAll(databaseValidatorUrl || 'no-database-validator', '[database-validator]')
   writeFileSync(join(evidence, 'failure.log'), error.stack ?? String(error))
   console.error('FAIL ' + error.message)
   process.exitCode = 1
@@ -1166,6 +1183,7 @@ try {
     try {
       const ids = owners.map((id) => `'${id}'`).join(',') || 'null'
       await sql(`begin;
+        ${databaseValidatorUrl ? 'revoke connect on database postgres from money_saver_worker_validator; drop role money_saver_worker_validator;' : ''}
         delete from ms_sync_private.feed where user_id in (${ids});
         delete from ms_sync_private.record_versions where user_id in (${ids});
         delete from ms_sync_private.operations where user_id in (${ids});

@@ -4,8 +4,10 @@
   "main": "../.local/cloudflare-worker/index.js",
   "no_bundle": true,
   "compatibility_date": "2026-11-04",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "hyperdrive": [{ "binding": "VALIDATOR_HYPERDRIVE", "id": "399b7f0f76a24435857f45b0a035a6e1" }],
   "assets": {
     "directory": "../dist",
     "binding": "ASSETS",

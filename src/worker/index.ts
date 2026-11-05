@@ -2,12 +2,19 @@ import { z } from 'zod'
 import { canonicalJson, sha256, MAX_IMPORT_BYTES } from '../infrastructure/sync/protocol'
 import { validateImportForApproval } from '../infrastructure/sync/trusted-validation'
 import { validateDelta, type WireData } from '../infrastructure/sync/incremental'
+import {
+  approveThroughDatabase,
+  approveThroughHyperdrive,
+  validatorDatabaseOptions,
+} from './database-validator'
 
 export interface WorkerEnv {
   LAB_ONLY: string
   SUPABASE_URL: string
   SUPABASE_PUBLIC_KEY: string
-  SYNC_VALIDATOR_TOKEN: string // Dedicated approval-only role, never service_role.
+  SYNC_VALIDATOR_TOKEN?: string // Local/legacy approval-only role, never service_role.
+  SYNC_VALIDATOR_DATABASE_URL?: string // Dedicated LOGIN inheriting approval-only privileges.
+  VALIDATOR_HYPERDRIVE?: { connectionString: string }
   REMOTE_SYNC_ENABLED?: string
   SYNC_ALLOWED_USER_IDS?: string
   APP_ORIGINS?: string
@@ -41,13 +48,24 @@ function localGate(env: WorkerEnv) {
       env.SUPABASE_URL !== 'https://iwzmsbkbuerleocismhj.supabase.co' ||
       !env.SYNC_ALLOWED_USER_IDS ||
       !env.APP_ORIGINS ||
-      !env.SYNC_VALIDATOR_TOKEN ||
+      (!env.SYNC_VALIDATOR_TOKEN &&
+        !env.SYNC_VALIDATOR_DATABASE_URL &&
+        !env.VALIDATOR_HYPERDRIVE?.connectionString) ||
       !env.SUPABASE_PUBLIC_KEY
     )
       throw new SyncHttpError(503, 'SYNC_DISABLED')
+    if (env.VALIDATOR_HYPERDRIVE?.connectionString) return
+    if (env.SYNC_VALIDATOR_DATABASE_URL) {
+      try {
+        validatorDatabaseOptions(env.SYNC_VALIDATOR_DATABASE_URL, false)
+      } catch {
+        throw new SyncHttpError(503, 'VALIDATOR_CONFIGURATION')
+      }
+      return
+    }
     try {
       const claims = JSON.parse(
-        atob(env.SYNC_VALIDATOR_TOKEN.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
+        atob(env.SYNC_VALIDATOR_TOKEN!.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
       )
       if (
         claims.role !== 'money_saver_sync_validator' ||
@@ -73,7 +91,7 @@ function localGate(env: WorkerEnv) {
     url.hash
   )
     throw new SyncHttpError(503, 'SYNC_DISABLED')
-  if (!env.SYNC_VALIDATOR_TOKEN || !env.SUPABASE_PUBLIC_KEY)
+  if ((!env.SYNC_VALIDATOR_TOKEN && !env.SYNC_VALIDATOR_DATABASE_URL) || !env.SUPABASE_PUBLIC_KEY)
     throw new SyncHttpError(503, 'CONFIGURATION')
 }
 async function boundedBody(request: Request) {
@@ -134,6 +152,32 @@ export default {
       if (env.LAB_ONLY === 'false' && !env.SYNC_ALLOWED_USER_IDS?.split(',').includes(user.id))
         throw new SyncHttpError(403, 'ACCOUNT_NOT_ENABLED')
       async function rpc(name: string, body: unknown, privileged = false) {
+        if (privileged && (env.SYNC_VALIDATOR_DATABASE_URL || env.VALIDATOR_HYPERDRIVE)) {
+          if (name !== 'ms_approve') throw new SyncHttpError(503, 'VALIDATOR_SCOPE')
+          try {
+            if (env.VALIDATOR_HYPERDRIVE)
+              await approveThroughHyperdrive(
+                env.VALIDATOR_HYPERDRIVE.connectionString,
+                body as Parameters<typeof approveThroughDatabase>[2],
+              )
+            else
+              await approveThroughDatabase(
+                env.SYNC_VALIDATOR_DATABASE_URL!,
+                env.LAB_ONLY === 'true',
+                body as Parameters<typeof approveThroughDatabase>[2],
+              )
+          } catch (error) {
+            const code =
+              error && typeof error === 'object' && 'code' in error
+                ? String(error.code)
+                : 'CONNECTION_FAILED'
+            throw new SyncHttpError(
+              503,
+              'APPROVAL_' + (/^[A-Z0-9_]{1,50}$/.test(code) ? code : 'FAILED'),
+            )
+          }
+          return null
+        }
         const response = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
           method: 'POST',
           headers: privileged
@@ -144,12 +188,14 @@ export default {
           redirect: 'manual',
         })
         if (!response.ok) {
-          const error = (await response.json().catch(() => ({}))) as { code?: string }
+          const parsed = await response.json().catch(() => null)
+          const error = (parsed && typeof parsed === 'object' ? parsed : {}) as { code?: string }
           throw new SyncHttpError(
-            error.code === '40001' || error.code === '23505'
+            error.code === '40001' || error.code === '23505' || response.status === 409
               ? 409
-              : error.code === '55P03'
+              : error.code === '55P03' || response.status >= 500
                 ? 503
+                : response.status === 401 ? 401
                 : 422,
             error.code ?? 'RPC_REJECTED',
           )
@@ -188,6 +234,8 @@ export default {
         data: WireData
         receipt: { payloadHash: string; revision: number } | null
       }
+      if (!view || typeof view.revision !== 'number' || !view.data)
+        throw new SyncHttpError(503, 'SERVER_VIEW_UNAVAILABLE')
       if (view.receipt) {
         if (
           view.receipt.payloadHash !== hash ||
@@ -256,6 +304,7 @@ export default {
                   ? 'INVALID_PAYLOAD'
                   : 'VALIDATION_OR_CONNECTION_FAILED',
             requestId,
+            ...(status === 503 && !(error instanceof SyncHttpError) ? { category: error instanceof Error ? error.name : 'Unknown' } : {}),
           },
         },
         status,

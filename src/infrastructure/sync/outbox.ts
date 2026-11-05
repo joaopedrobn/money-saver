@@ -113,8 +113,11 @@ export interface SyncTransport {
   ): Promise<{ until: number; events: FeedEvent[] }>
 }
 export class TransportError extends Error {
-  constructor(public status: number) {
-    super(`HTTP ${status}`)
+  constructor(
+    public status: number,
+    public serverCode?: string,
+  ) {
+    super(`HTTP ${status}${serverCode ? ': ' + serverCode : ''}`)
   }
 }
 export function localWorkerTransport(baseUrl: string): SyncTransport {
@@ -132,7 +135,14 @@ export function workerTransport(baseUrl: string): SyncTransport {
       signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
       redirect: 'error',
     })
-    if (!response.ok) throw new TransportError(response.status)
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      const code =
+        typeof body?.error?.code === 'string' && /^[A-Z0-9_]{1,100}$/.test(body.error.code)
+          ? body.error.code
+          : undefined
+      throw new TransportError(response.status, code)
+    }
     return (await response.json()).data
   }
   return {
@@ -160,6 +170,9 @@ export class SyncClient {
   private stopped = false
   private offline = false
   private running = false
+  private tickBusy = false
+  private stoppedToken: string | undefined
+  private wakeScheduled: (() => void) | undefined
   private timer: ReturnType<typeof setTimeout> | undefined
   constructor(
     readonly db: SyncLabDatabase,
@@ -221,10 +234,30 @@ export class SyncClient {
     })
   }
   /** Call on logout/account change from the existing Auth observer. Never clears data. */
-  stop() {
+  stop(expiredToken = this.session()?.accessToken) {
+    this.stoppedToken = expiredToken
     this.stopped = true
     this.controller.abort()
     clearTimeout(this.timer)
+    this.wakeScheduled = undefined
+  }
+  wake() {
+    this.wakeScheduled?.()
+  }
+  /** Only a new token from the existing verified Auth observer can resume a 401-paused client. */
+  resumeAfterTokenRefresh() {
+    const identity = this.session()
+    if (
+      !this.stopped ||
+      !identity ||
+      identity.userId !== this.userId ||
+      identity.accessToken === this.stoppedToken
+    )
+      return
+    this.controller = new AbortController()
+    this.stopped = false
+    this.running = false
+    this.start()
   }
   /** Explicit opt-in only; the production application never calls this scheduler. */
   start() {
@@ -232,23 +265,32 @@ export class SyncClient {
     if (this.running) return
     this.running = true
     const tick = async () => {
+      if (this.tickBusy || this.stopped) return
+      clearTimeout(this.timer)
+      this.tickBusy = true
       try {
         this.identity()
         await this.drain()
         if (!(await this.pending()).length) await this.pull()
       } catch (error) {
         if (error instanceof TransportError && error.status === 401) {
-          this.stop()
-          return
+          if (!this.stopped) this.stop()
+          this.resumeAfterTokenRefresh()
+        } else {
+          this.offline = !(error instanceof TransportError) || error.status >= 500
         }
-        this.offline = !(error instanceof TransportError) || error.status >= 500
+      } finally {
+        this.tickBusy = false
       }
       if (!this.stopped)
         this.timer = setTimeout(() => {
           void tick()
         }, 3000)
     }
-    void tick()
+    this.wakeScheduled = () => {
+      void tick()
+    }
+    this.wake()
   }
   private identity() {
     const identity = this.session()
@@ -372,6 +414,16 @@ export class SyncClient {
     })
     this.identity()
     return { backup, plan }
+  }
+  async inspectExternalBackup(value: unknown) {
+    const identity = this.identity()
+    const backup = validateBackup(value)
+    const remote = await this.transport.view(identity.accessToken, this.controller.signal)
+    return {
+      revision: remote.revision,
+      local: await reconciliationManifest(backup, this.asOf),
+      remote: await reconciliationManifest(decodeRemoteBackup(remote.data, this.userId), this.asOf),
+    }
   }
   /** Explicit file selection only. Original browser datasets are never read or changed. */
   async stageInitialBackup(value: unknown, confirmation: string) {
@@ -633,7 +685,7 @@ export class SyncClient {
         if (!integrity && (status === 0 || status >= 500 || status === 401))
           await this.db.syncHead.update('head', { connectionError: lastError })
       })
-      if (status === 401) this.stop()
+      if (status === 401) this.stop(identity.accessToken)
       throw error
     }
   }
@@ -650,7 +702,7 @@ export class SyncClient {
     } catch (error) {
       if (error instanceof SyncIntegrityError)
         await this.db.syncHead.update('head', { verificationError: error.message })
-      if (error instanceof TransportError && error.status === 401) this.stop()
+      if (error instanceof TransportError && error.status === 401) this.stop(identity.accessToken)
       this.offline =
         error instanceof TypeError || (error instanceof TransportError && error.status >= 500)
       if (this.offline || (error instanceof TransportError && error.status === 401))

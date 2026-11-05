@@ -3,7 +3,7 @@ import { createRemoteSyncWorkspace, remoteProject, remoteSyncConfig } from './re
 import { fixture, owner } from './fixtures.test-data'
 import { wireData } from './incremental'
 import { canonicalJson, entities, reconciliationManifest, sha256 } from './protocol'
-import type { SyncClient, SyncTransport } from './outbox'
+import { TransportError, type SyncClient, type SyncTransport } from './outbox'
 import { authConfig } from '../supabase/config'
 
 const clients: SyncClient[] = []
@@ -149,4 +149,26 @@ it('uses the current deployment callback when no override is provided and reject
       'https://money-saver.quem-votar-jp.workers.dev/',
     ).enabled,
   ).toBe(false)
+})
+
+it('resumes a 401-paused replica only after the verified observer supplies a different token', async () => {
+  const transport = port()
+  let identity = session()
+  const c = createRemoteSyncWorkspace(
+    remoteSyncConfig(env, 'http://localhost:5173', owner)!,
+    () => identity,
+    transport,
+  )
+  clients.push(c)
+  await c.bootstrap()
+  vi.mocked(transport.page).mockRejectedValueOnce(new TransportError(401))
+  await expect(c.pull()).rejects.toThrow('401')
+  c.resumeAfterTokenRefresh()
+  expect(transport.page).toHaveBeenCalledTimes(1)
+  identity = { ...identity, accessToken: 'unit-refreshed-verified-token' }
+  c.resumeAfterTokenRefresh()
+  await vi.waitFor(async () =>
+    expect(await c.status()).toMatchObject({ phase: 'verified', message: '' }),
+  )
+  expect(transport.page).toHaveBeenCalledTimes(2)
 })
