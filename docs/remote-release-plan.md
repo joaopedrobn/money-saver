@@ -2,7 +2,9 @@
 
 04/11/2026. Node **26.7.0**. Nenhuma aplicação SQL remota, publicação, ativação, importação pessoal ou push foi executado.
 
-## Estado conferido
+**Atualização de 05/11/2026:** login e vínculo concluídos; catálogo remoto consultado somente para leitura e dry-run aprovado, selecionando apenas a migração `202611040001`. Evidências e hash exato em [remote-preflight-2026-11-05.md](remote-preflight-2026-11-05.md). As pendências de acesso abaixo descrevem a tentativa anterior e foram superadas; nenhuma migração foi aplicada.
+
+## Estado da preparação inicial (04/11/2026)
 
 - Cópia: `C:\Users\Soluções SIG\Desktop\projetos\money-saver`, branch `main`, remoto `https://github.com/joaopedrobn/money-saver.git`.
 - Início desta entrega sem alterações pendentes. HEAD e `refs/heads/main` remoto eram `2c6e5f07b093b69c6d2673e93ccd95d862b77be7`. Os arquivos das fases anteriores já estavam nesse commit, incluindo skill/MCP PanelUI.
